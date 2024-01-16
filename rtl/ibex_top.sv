@@ -31,6 +31,8 @@ module ibex_top import ibex_pkg::*; #(
   parameter int unsigned DbgHwBreakNum    = 1,
   parameter bit          SecureIbex       = 1'b0,
   parameter bit          ICacheScramble   = 1'b0,
+  parameter bit          CLIC             = 1'b0,
+  parameter int unsigned NUM_INTERRUPTS   = 64,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
@@ -77,6 +79,10 @@ module ibex_top import ibex_pkg::*; #(
   input  logic                         irq_external_i,
   input  logic [14:0]                  irq_fast_i,
   input  logic                         irq_nm_i,       // non-maskeable interrupt
+  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
+  input  logic                         irq_level_i,
+  input  logic                         irq_shv_i,
+  input  logic                         irq_priv_i,
 
   // Scrambling Interface
   input  logic                         scramble_key_valid_i,
