@@ -216,7 +216,6 @@ module ibex_cs_registers #(
   logic        mstatus_err;
   logic        mstatus_en;
   logic [31:0] medeleg_q, medeleg_d;
-  logic        medeleg_err;
   logic        medeleg_en;
   irqs_t       mie_q, mie_d;
   logic        mie_en;
@@ -234,6 +233,18 @@ module ibex_cs_registers #(
   logic [31:0] mtvt_q, mtvt_d;
   logic        mtvt_err;
   logic        mtvt_en;
+  logic [31:0] mnxti_q, mnxti_d;
+  logic        mnxti_en;
+  logic [31:0] mintstatus_q, mintstatus_d;
+  logic        mintstatus_en;
+  logic [31:0] mintthresh_q, mintthresh_d;
+  logic        mintthresh_en;
+  logic [31:0] mscratchcsw_q, mscratchcsw_d;
+  logic        mscratchcsw_en;
+  logic [31:0] mscratchcswl_q, mscratchcswl_d;
+  logic        mscratchcswl_en;
+  logic [31:0] mclicbase_q, mclicbase_d;
+  logic        mclicbase_en;
   logic        clic_mode;
   irqs_t       mip;
   dcsr_t       dcsr_q, dcsr_d;
@@ -414,12 +425,12 @@ module ibex_cs_registers #(
         csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
       end
 
-      CSR_MNXTI: ;  
-      CSR_MINTSATUS: ;  
-      CSR_MINTTHRESH: ;
-      CSR_MSCRATCHSW: ;
-      CSR_MSCRATCHSWL:;
-      CSR_MCLICBASE:;
+      CSR_MNXTI:        csr_rdata_int = mnxti_q;  
+      CSR_MINTSATUS:    csr_rdata_int = mintstatus_q;  
+      CSR_MINTTHRESH:   csr_rdata_int = mintthresh_q;
+      CSR_MSCRATCHSW:   csr_rdata_int = mscratchcsw_q;
+      CSR_MSCRATCHSWL:  csr_rdata_int = mscratchcswl_q;
+      CSR_MCLICBASE:    csr_rdata_int = mclicbase_q;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
@@ -587,6 +598,7 @@ module ibex_cs_registers #(
     priv_lvl_d   = priv_lvl_q;
     mstatus_en   = 1'b0;
     mstatus_d    = mstatus_q;
+    medeleg_d    = csr_wdata_int;
     mie_en       = 1'b0;
     mscratch_en  = 1'b0;
     mepc_en      = 1'b0;
@@ -604,6 +616,7 @@ module ibex_cs_registers #(
     mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8], 6'b0, 2'b01} :
                                       {csr_wdata_int[31:8], 6'b0, csr_wdata_int[1], 1'b1};
     mtvt_d       = csr_wdata_int;
+    // Add CLIC regs
     dcsr_en      = 1'b0;
     dcsr_d       = dcsr_q;
     depc_d       = {csr_wdata_int[31:1], 1'b0};
