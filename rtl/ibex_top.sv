@@ -74,11 +74,7 @@ module ibex_top import ibex_pkg::*; #(
   input  logic                         data_err_i,
 
   // Interrupt inputs
-  input  logic                         irq_software_i,
-  input  logic                         irq_timer_i,
-  input  logic                         irq_external_i,
-  input  logic [14:0]                  irq_fast_i,
-  input  logic                         irq_nm_i,       // non-maskeable interrupt
+
   input  logic [NUM_INTERRUPTS-1:0]    irq_i,
   input  logic                         irq_level_i,
   input  logic                         irq_shv_i,
@@ -184,6 +180,13 @@ module ibex_top import ibex_pkg::*; #(
   logic [MemDataWidth-1:0]     data_rdata_core;
   logic [MemDataWidth-1:0]     instr_rdata_core;
 
+  // IRQs
+  logic                        irq_software;
+  logic                        irq_timer;
+  logic                        irq_external;
+  logic [14:0]                 irq_fast;
+  logic                        irq_nm;       // non-maskeable interrupt
+
   // Core <-> RAMs signals
   logic [IC_NUM_WAYS-1:0]      ic_tag_req;
   logic                        ic_tag_write;
@@ -223,7 +226,7 @@ module ibex_top import ibex_pkg::*; #(
       .d_i   (core_busy_d),
       .q_o   (core_busy_q)
     );
-    assign clock_en = (core_busy_q != IbexMuBiOff) | debug_req_i | irq_pending | irq_nm_i;
+    assign clock_en = (core_busy_q != IbexMuBiOff) | debug_req_i | irq_pending | irq_nm;
   end else begin : g_clock_en_non_secure
     // For non secure Ibex only the bottom bit of core_busy_q is considered. Other FFs can be
     // optimized away during synthesis.
@@ -234,13 +237,19 @@ module ibex_top import ibex_pkg::*; #(
         core_busy_q <= core_busy_d;
       end
     end
-    assign clock_en = core_busy_q[0] | debug_req_i | irq_pending | irq_nm_i;
+    assign clock_en = core_busy_q[0] | debug_req_i | irq_pending | irq_nm;
 
     logic unused_core_busy;
     assign unused_core_busy = ^core_busy_q[$bits(ibex_mubi_t)-1:1];
   end
 
   assign core_sleep_o = ~clock_en;
+
+  assign irq_software_i = irq_i[3]    ;
+  assign irq_timer_i    = irq_i[7]    ;
+  assign irq_external_i = irq_i[11]   ;
+  assign irq_fast_i     = irq_i[30:16];
+  assign irq_nm_i       = irq_i[31]   ;
 
   prim_clock_gating core_clock_gate_i (
     .clk_i    (clk_i),
@@ -361,12 +370,12 @@ module ibex_top import ibex_pkg::*; #(
     .ic_scr_key_valid_i(scramble_key_valid_q),
     .ic_scr_key_req_o  (ic_scr_key_req),
 
-    .irq_software_i,
-    .irq_timer_i,
-    .irq_external_i,
-    .irq_fast_i,
-    .irq_nm_i,
-    .irq_pending_o(irq_pending),
+    .irq_software_i (irq_software),
+    .irq_timer_i    (irq_timer),
+    .irq_external_i (irq_external),
+    .irq_fast_i     (irq_fast),
+    .irq_nm_i       (irq_nm),
+    .irq_pending_o  (irq_pending),
 
     .debug_req_i,
     .crash_dump_o,
@@ -779,11 +788,11 @@ module ibex_top import ibex_pkg::*; #(
       ic_data_wdata,
       scramble_key_valid_i,
       ic_scr_key_req,
-      irq_software_i,
-      irq_timer_i,
-      irq_external_i,
-      irq_fast_i,
-      irq_nm_i,
+      irq_software,
+      irq_timer,
+      irq_external,
+      irq_fast,
+      irq_nm,
       irq_pending,
       debug_req_i,
       crash_dump_o,
@@ -886,11 +895,11 @@ module ibex_top import ibex_pkg::*; #(
       ic_data_wdata,
       scramble_key_valid_q,
       ic_scr_key_req,
-      irq_software_i,
-      irq_timer_i,
-      irq_external_i,
-      irq_fast_i,
-      irq_nm_i,
+      irq_software,
+      irq_timer,
+      irq_external,
+      irq_fast,
+      irq_nm,
       irq_pending,
       debug_req_i,
       crash_dump_o,
@@ -1290,7 +1299,7 @@ module ibex_top import ibex_pkg::*; #(
     `endif // RVFI
   `endif
 
-  `ASSERT_KNOWN(IbexIrqX, {irq_software_i, irq_timer_i, irq_external_i, irq_fast_i, irq_nm_i})
+  `ASSERT_KNOWN(IbexIrqX, {irq_i})
 
   `ASSERT_KNOWN(IbexScrambleKeyValidX, scramble_key_valid_i)
   `ASSERT_KNOWN_IF(IbexScramblePayloadX, {scramble_key_i, scramble_nonce_i}, scramble_key_valid_i)

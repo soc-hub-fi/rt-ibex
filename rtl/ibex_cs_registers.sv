@@ -239,10 +239,10 @@ module ibex_cs_registers #(
   logic        mintstatus_en;
   logic [31:0] mintthresh_q, mintthresh_d;
   logic        mintthresh_en;
-  logic [31:0] mscratchcsw_q, mscratchcsw_d;
-  logic        mscratchcsw_en;
-  logic [31:0] mscratchcswl_q, mscratchcswl_d;
-  logic        mscratchcswl_en;
+  logic [31:0] mscratchsw_q, mscratchsw_d;
+  logic        mscratchsw_en;
+  logic [31:0] mscratchswl_q, mscratchswl_d;
+  logic        mscratchswl_en;
   logic [31:0] mclicbase_q, mclicbase_d;
   logic        mclicbase_en;
   logic        clic_mode;
@@ -425,11 +425,17 @@ module ibex_cs_registers #(
         csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
       end
 
-      CSR_MNXTI:        csr_rdata_int = mnxti_q;  
-      CSR_MINTSATUS:    csr_rdata_int = mintstatus_q;  
+      // CLIC registers
+      CSR_MNXTI:        csr_rdata_int = mnxti_q;
+
+      CSR_MINTSATUS:    csr_rdata_int = mintstatus_q;
+
       CSR_MINTTHRESH:   csr_rdata_int = mintthresh_q;
-      CSR_MSCRATCHSW:   csr_rdata_int = mscratchcsw_q;
-      CSR_MSCRATCHSWL:  csr_rdata_int = mscratchcswl_q;
+
+      CSR_MSCRATCHSW:   csr_rdata_int = mscratchsw_q;
+
+      CSR_MSCRATCHSWL:  csr_rdata_int = mscratchswl_q;
+
       CSR_MCLICBASE:    csr_rdata_int = mclicbase_q;
 
       CSR_MSECCFG: begin
@@ -616,7 +622,22 @@ module ibex_cs_registers #(
     mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8], 6'b0, 2'b01} :
                                       {csr_wdata_int[31:8], 6'b0, csr_wdata_int[1], 1'b1};
     mtvt_d       = csr_wdata_int;
-    // Add CLIC regs
+    // CLIC regs
+    mnxti_d        = csr_wdata_int;
+    mnxti_d        = csr_wdata_int;
+    mintstatus_d   = csr_wdata_int;
+    mintthresh_d   = csr_wdata_int;
+    mscratchsw_d   = csr_wdata_int;
+    mscratchswl_d  = csr_wdata_int;
+    mclicbase_d    = csr_wdata_int;
+
+    mnxti_en       = 1'b0;
+    mintstatus_en  = 1'b0;
+    mintthresh_en  = 1'b0;
+    mscratchsw_en  = 1'b0;
+    mscratchswl_en = 1'b0;
+    mclicbase_en   = 1'b0;
+
     dcsr_en      = 1'b0;
     dcsr_d       = dcsr_q;
     depc_d       = {csr_wdata_int[31:1], 1'b0};
@@ -676,6 +697,14 @@ module ibex_cs_registers #(
 
         // mtvt
         CSR_MTVT: mtvt_en = 1'b1;
+
+        // CLIC registers
+        CSR_MNXTI:       mnxti_en       = 1'b1;
+        CSR_MINTSATUS:   mintstatus_en  = 1'b1;
+        CSR_MINTTHRESH:  mintthresh_en  = 1'b1;
+        CSR_MSCRATCHSW:  mscratchsw_en  = 1'b1;
+        CSR_MSCRATCHSWL: mscratchswl_en = 1'b1;
+        CSR_MCLICBASE:   mclicbase_en   = 1'b1;
 
         CSR_DCSR: begin
           dcsr_d = csr_wdata_int;
