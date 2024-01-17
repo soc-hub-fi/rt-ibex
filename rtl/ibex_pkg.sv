@@ -434,9 +434,11 @@ package ibex_pkg;
     // Machine trap setup
     CSR_MSTATUS   = 12'h300,
     CSR_MISA      = 12'h301,
+    CSR_MEDELEG   = 12'h302,
     CSR_MIE       = 12'h304,
     CSR_MTVEC     = 12'h305,
     CSR_MCOUNTEREN= 12'h306,
+    CSR_MTVT      = 12'h307,
     CSR_MSTATUSH  = 12'h310,
 
     CSR_MENVCFG   = 12'h30A,
@@ -448,6 +450,14 @@ package ibex_pkg;
     CSR_MCAUSE    = 12'h342,
     CSR_MTVAL     = 12'h343,
     CSR_MIP       = 12'h344,
+
+    // CLIC registers
+    CSR_MNXTI      = 12'h345,
+    CSR_MINTSATUS  = 12'h346,
+    CSR_MINTTHRESH = 12'h347,
+    CSR_MSCRATCHSW = 12'h348,
+    CSR_MSCRATCHSWL= 12'h349,
+    CSR_MCLICBASE  = 12'h350,
 
     // Physical memory protection
     CSR_PMPCFG0   = 12'h3A0,

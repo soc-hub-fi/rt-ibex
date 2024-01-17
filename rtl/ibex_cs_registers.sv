@@ -22,6 +22,7 @@ module ibex_cs_registers #(
   parameter int unsigned      PMPGranularity    = 0,
   parameter int unsigned      PMPNumRegions     = 4,
   parameter bit               RV32E             = 0,
+  parameter bit               CLIC              = 1,
   parameter ibex_pkg::rv32m_e RV32M             = ibex_pkg::RV32MFast,
   parameter ibex_pkg::rv32b_e RV32B             = ibex_pkg::RV32BNone
 ) (
@@ -160,6 +161,8 @@ module ibex_cs_registers #(
     | (RV32BExtra        << 23)  // X - Non-standard extensions present
     | (32'(CSR_MISA_MXL) << 30); // M-XLEN
 
+  localparam MTVEC_MODE        = CLIC ? 2'b11 : 2'b01;
+
   typedef struct packed {
     logic      mie;
     logic      mpie;
@@ -212,6 +215,9 @@ module ibex_cs_registers #(
   status_t     mstatus_q, mstatus_d;
   logic        mstatus_err;
   logic        mstatus_en;
+  logic [31:0] medeleg_q, medeleg_d;
+  logic        medeleg_err;
+  logic        medeleg_en;
   irqs_t       mie_q, mie_d;
   logic        mie_en;
   logic [31:0] mscratch_q;
@@ -225,6 +231,10 @@ module ibex_cs_registers #(
   logic [31:0] mtvec_q, mtvec_d;
   logic        mtvec_err;
   logic        mtvec_en;
+  logic [31:0] mtvt_q, mtvt_d;
+  logic        mtvt_err;
+  logic        mtvt_en;
+  logic        clic_mode;
   irqs_t       mip;
   dcsr_t       dcsr_q, dcsr_d;
   logic        dcsr_en;
@@ -299,6 +309,7 @@ module ibex_cs_registers #(
   logic [2:0]  unused_csr_addr;
 
   assign unused_boot_addr = boot_addr_i[7:0];
+  assign clic_mode = mtvec_q[1];
 
   /////////////
   // CSR reg //
@@ -349,6 +360,8 @@ module ibex_cs_registers #(
         csr_rdata_int[CSR_MSTATUS_TW_BIT]                               = mstatus_q.tw;
       end
 
+      CSR_MEDELEG: csr_rdata_int = medeleg_q;
+
       // mstatush: All zeros for Ibex (fixed little endian and all other bits reserved)
       CSR_MSTATUSH: csr_rdata_int = '0;
 
@@ -378,6 +391,9 @@ module ibex_cs_registers #(
       // mtvec: trap-vector base address
       CSR_MTVEC: csr_rdata_int = mtvec_q;
 
+      // mtvt: CLIC register for trap-handler vector table base address
+      CSR_MTVT: csr_rdata_int = mtvt_q;
+
       // mepc: exception program counter
       CSR_MEPC: csr_rdata_int = mepc_q;
 
@@ -397,6 +413,13 @@ module ibex_cs_registers #(
         csr_rdata_int[CSR_MEIX_BIT]                       = mip.irq_external;
         csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
       end
+
+      CSR_MNXTI: ;  
+      CSR_MINTSATUS: ;  
+      CSR_MINTTHRESH: ;
+      CSR_MSCRATCHSW: ;
+      CSR_MSCRATCHSWL:;
+      CSR_MCLICBASE:;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
@@ -575,10 +598,12 @@ module ibex_cs_registers #(
     mtval_en     = 1'b0;
     mtval_d      = csr_wdata_int;
     mtvec_en     = csr_mtvec_init_i;
+    mtvt_en      = 1'b0;
     // mtvec.MODE set to vectored
     // mtvec.BASE must be 256-byte aligned
     mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8], 6'b0, 2'b01} :
-                                      {csr_wdata_int[31:8], 6'b0, 2'b01};
+                                      {csr_wdata_int[31:8], 6'b0, csr_wdata_int[1], 1'b1};
+    mtvt_d       = csr_wdata_int;
     dcsr_en      = 1'b0;
     dcsr_d       = dcsr_q;
     depc_d       = {csr_wdata_int[31:1], 1'b0};
@@ -635,6 +660,9 @@ module ibex_cs_registers #(
 
         // mtvec
         CSR_MTVEC: mtvec_en = 1'b1;
+
+        // mtvt
+        CSR_MTVT: mtvt_en = 1'b1;
 
         CSR_DCSR: begin
           dcsr_d = csr_wdata_int;
@@ -875,6 +903,20 @@ module ibex_cs_registers #(
     .rd_error_o(mstatus_err)
   );
 
+  // MEDELEG
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(1'b0),
+    .ResetValue('0)
+  ) u_medeleg_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (medeleg_d),
+    .wr_en_i   (medeleg_en),
+    .rd_data_o (medeleg_q),
+    .rd_error_o()
+  );
+
   // MEPC
   ibex_csr #(
     .Width     (32),
@@ -953,7 +995,7 @@ module ibex_cs_registers #(
   ibex_csr #(
     .Width     (32),
     .ShadowCopy(ShadowCSR),
-    .ResetValue(32'd1)
+    .ResetValue(MTVEC_MODE)
   ) u_mtvec_csr (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
@@ -961,6 +1003,20 @@ module ibex_cs_registers #(
     .wr_en_i   (mtvec_en),
     .rd_data_o (mtvec_q),
     .rd_error_o(mtvec_err)
+  );
+
+  // MTVT
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(ShadowCSR),
+    .ResetValue('0)
+  ) u_mtvt_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mtvt_d),
+    .wr_en_i   (mtvt_en),
+    .rd_data_o (mtvt_q),
+    .rd_error_o(mtvt_err)
   );
 
   // DCSR
@@ -1065,6 +1121,94 @@ module ibex_cs_registers #(
     .wr_data_i (mstack_cause_d),
     .wr_en_i   (mstack_en),
     .rd_data_o (mstack_cause_q),
+    .rd_error_o()
+  );
+
+  // -----------------
+  // CLIC registers
+  // -----------------
+
+  // MNXTI
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(ShadowCSR),
+    .ResetValue('0)
+  ) u_mnxti_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mnxti_d),
+    .wr_en_i   (mnxti_en),
+    .rd_data_o (mnxti_q),
+    .rd_error_o()
+  );
+
+  // MINTSTATUS
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(ShadowCSR),
+    .ResetValue('0)
+  ) u_mintstatus_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mintstatus_d),
+    .wr_en_i   (mintstatus_en),
+    .rd_data_o (mintstatus_q),
+    .rd_error_o()
+  );
+
+  // MINTTHRESH
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(ShadowCSR),
+    .ResetValue('0)
+  ) u_mintthresh_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mintthresh_d),
+    .wr_en_i   (mintthresh_en),
+    .rd_data_o (mintthresh_q),
+    .rd_error_o()
+  );
+
+  // MSCRATCHSW
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(ShadowCSR),
+    .ResetValue('0)
+  ) u_mscratchsw_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mscratchsw_d),
+    .wr_en_i   (mscratchsw_en),
+    .rd_data_o (mscratchsw_q),
+    .rd_error_o()
+  );
+
+  // MSCRATCHSWL
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(ShadowCSR),
+    .ResetValue('0)
+  ) u_mscratchswl_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mscratchswl_d),
+    .wr_en_i   (mscratchswl_en),
+    .rd_data_o (mscratchswl_q),
+    .rd_error_o()
+  );
+
+  // MCLICBASE
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(ShadowCSR),
+    .ResetValue('0)
+  ) u_mclicbase_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mclicbase_d),
+    .wr_en_i   (mclicbase_en),
+    .rd_data_o (mclicbase_q),
     .rd_error_o()
   );
 
@@ -1673,7 +1817,7 @@ module ibex_cs_registers #(
   );
 
   assign csr_shadow_err_o =
-    mstatus_err | mtvec_err | pmp_csr_err | cpuctrlsts_part_err | cpuctrlsts_ic_scr_key_err;
+    mstatus_err | mtvec_err | mtvt_err | pmp_csr_err | cpuctrlsts_part_err | cpuctrlsts_ic_scr_key_err;
 
   ////////////////
   // Assertions //
