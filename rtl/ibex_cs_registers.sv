@@ -23,6 +23,7 @@ module ibex_cs_registers #(
   parameter int unsigned      PMPNumRegions     = 4,
   parameter bit               RV32E             = 0,
   parameter bit               CLIC              = 1,
+  parameter bit               NUM_INTERRUPTS    = 64,
   parameter ibex_pkg::rv32m_e RV32M             = ibex_pkg::RV32MFast,
   parameter ibex_pkg::rv32b_e RV32B             = ibex_pkg::RV32BNone
 ) (
@@ -106,6 +107,10 @@ module ibex_cs_registers #(
                                                         // with wrong priviledge level, or
                                                         // missing write permissions
   output logic                 double_fault_seen_o,
+
+  // CLIC signals
+  input logic                  minhv_i,
+
   // Performance Counters
   input  logic                 instr_ret_i,                 // instr retired in ID/EX stage
   input  logic                 instr_ret_compressed_i,      // compressed instr retired
@@ -223,7 +228,7 @@ module ibex_cs_registers #(
   logic        mscratch_en;
   logic [31:0] mepc_q, mepc_d;
   logic        mepc_en;
-  exc_cause_t  mcause_q, mcause_d;
+  logic [31:0] mcause_q, mcause_d;
   logic        mcause_en;
   logic [31:0] mtval_q, mtval_d;
   logic        mtval_en;
@@ -245,7 +250,7 @@ module ibex_cs_registers #(
   logic        mscratchswl_en;
   logic [31:0] mclicbase_q, mclicbase_d;
   logic        mclicbase_en;
-  logic        clic_mode;
+  logic        minhv_n, minhv_q;
   irqs_t       mip;
   dcsr_t       dcsr_q, dcsr_d;
   logic        dcsr_en;
@@ -320,7 +325,6 @@ module ibex_cs_registers #(
   logic [2:0]  unused_csr_addr;
 
   assign unused_boot_addr = boot_addr_i[7:0];
-  assign clic_mode = mtvec_q[1];
 
   /////////////
   // CSR reg //
@@ -342,6 +346,9 @@ module ibex_cs_registers #(
   assign mip.irq_timer    = irq_timer_i;
   assign mip.irq_external = irq_external_i;
   assign mip.irq_fast     = irq_fast_i;
+
+  assign minhv_n = mcause_d[30];
+  assign minhv_q = mcause_q[30];
 
   // read logic
   always_comb begin
@@ -385,11 +392,15 @@ module ibex_cs_registers #(
 
       // interrupt enable
       CSR_MIE: begin
-        csr_rdata_int                                     = '0;
-        csr_rdata_int[CSR_MSIX_BIT]                       = mie_q.irq_software;
-        csr_rdata_int[CSR_MTIX_BIT]                       = mie_q.irq_timer;
-        csr_rdata_int[CSR_MEIX_BIT]                       = mie_q.irq_external;
-        csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mie_q.irq_fast;
+        if (CLIC)
+          csr_rdata_int = '0;
+        else begin
+          csr_rdata_int                                     = '0;
+          csr_rdata_int[CSR_MSIX_BIT]                       = mie_q.irq_software;
+          csr_rdata_int[CSR_MTIX_BIT]                       = mie_q.irq_timer;
+          csr_rdata_int[CSR_MEIX_BIT]                       = mie_q.irq_external;
+          csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mie_q.irq_fast;
+        end
       end
 
       // mcounteren: machine counter enable
@@ -409,7 +420,19 @@ module ibex_cs_registers #(
       CSR_MEPC: csr_rdata_int = mepc_q;
 
       // mcause: exception cause
-      CSR_MCAUSE: csr_rdata_int = {mcause_q.irq_ext | mcause_q.irq_int,
+      CSR_MCAUSE: 
+        if (CLIC) begin
+          csr_rdata_int[31]    = mcause_q[$clog2(NUM_INTERRUPTS)];
+          csr_rdata_int[30]    = minhv_q;
+          csr_rdata_int[29:29] = mstatus_q.mpp[1:0];
+          csr_rdata_int[27]    = mstatus_q.mpie;
+          csr_rdata_int[26:24] = '0; // reserved
+          csr_rdata_int[23:16] = mpil_q;
+          csr_rdata_int[15:12] = '0; // reserved
+          csr_rdata_int[ 11:$clog2(NUM_INTERRUPTS)]  = '0;
+          csr_rdata_int[$clog2(NUM_INTERRUPTS)-1:0]  = mcause_q[$clog2(NUM_INTERRUPTS)-1:0];
+        end else
+          csr_rdata_int = {mcause_q.irq_ext | mcause_q.irq_int,
                                    mcause_q.irq_int ? {26{1'b1}} : 26'b0,
                                    mcause_q.lower_cause[4:0]};
 
@@ -418,11 +441,15 @@ module ibex_cs_registers #(
 
       // mip: interrupt pending
       CSR_MIP: begin
-        csr_rdata_int                                     = '0;
-        csr_rdata_int[CSR_MSIX_BIT]                       = mip.irq_software;
-        csr_rdata_int[CSR_MTIX_BIT]                       = mip.irq_timer;
-        csr_rdata_int[CSR_MEIX_BIT]                       = mip.irq_external;
-        csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
+        if (CLIC)
+          csr_rdata_int = '0;
+        else begin
+          csr_rdata_int                                     = '0;
+          csr_rdata_int[CSR_MSIX_BIT]                       = mip.irq_software;
+          csr_rdata_int[CSR_MTIX_BIT]                       = mip.irq_timer;
+          csr_rdata_int[CSR_MEIX_BIT]                       = mip.irq_external;
+          csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
+        end
       end
 
       // CLIC registers
@@ -610,17 +637,16 @@ module ibex_cs_registers #(
     mepc_en      = 1'b0;
     mepc_d       = {csr_wdata_int[31:1], 1'b0};
     mcause_en    = 1'b0;
-    mcause_d     = '{irq_ext :    csr_wdata_int[31:30] == 2'b10,
-                     irq_int :    csr_wdata_int[31:30] == 2'b11,
-                     lower_cause: csr_wdata_int[4:0]};
+    mcause_d     = mcause_q;
     mtval_en     = 1'b0;
     mtval_d      = csr_wdata_int;
     mtvec_en     = csr_mtvec_init_i;
     mtvt_en      = 1'b0;
-    // mtvec.MODE set to vectored
+    // mtvec.MODE set to ###CLIC###
+    // TODO: make runtime-configurable
     // mtvec.BASE must be 256-byte aligned
-    mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8], 6'b0, 2'b01} :
-                                      {csr_wdata_int[31:8], 6'b0, csr_wdata_int[1], 1'b1};
+    mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11}:
+                                      {csr_wdata_int[31:8], 6'b0, 2'b11};
     mtvt_d       = csr_wdata_int;
     // CLIC regs
     mnxti_d        = csr_wdata_int;
@@ -687,7 +713,22 @@ module ibex_cs_registers #(
         CSR_MEPC: mepc_en = 1'b1;
 
         // mcause
-        CSR_MCAUSE: mcause_en = 1'b1;
+        CSR_MCAUSE: begin
+          mcause_en = 1'b1;
+          if (CLIC) begin
+            mcause_n[$clog2(NUM_INTERRUPTS)]        = csr_wdata_int[31];
+            minhv_n            = csr_wdata_int[30]; // TODO: implement
+            mstatus_n.mpp[1:0] = csr_wdata_int[29:28];
+            mstatus_n.mpie     = csr_wdata_int[27];
+            //csr_wdata_int[26:24]; // reserved
+            mpil_n             = csr_wdata_int[23:16]; //TODO
+            //csr_wdata_int[15:12]; // reserved
+            //csr_wdata_int[11:$clog2(NUM_INTERRUPTS)];  // TODO: when more interrupt lines
+            mcause_n[$clog2(NUM_INTERRUPTS)-1:0]      = csr_wdata_int[$clog2(NUM_INTERRUPTS)-1:0];
+          end else
+            mcause_n = {csr_wdata_int[31], csr_wdata_int[$clog2(NUM_INTERRUPTS)-1:0]};
+        end 
+        // TODO: CLIC
 
         // mtval: trap value
         CSR_MTVAL: mtval_en = 1'b1;
@@ -1007,7 +1048,7 @@ module ibex_cs_registers #(
 
   // MCAUSE
   ibex_csr #(
-    .Width     ($bits(exc_cause_t)),
+    .Width     (32),
     .ShadowCopy(1'b0),
     .ResetValue('0)
   ) u_mcause_csr (
