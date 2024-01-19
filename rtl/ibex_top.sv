@@ -75,9 +75,9 @@ module ibex_top import ibex_pkg::*; #(
 
   // Interrupt inputs
   input  logic [NUM_INTERRUPTS-1:0]    irq_i,
-  input  logic                         irq_level_i,
+  input  logic [7:0]                   irq_level_i,
   input  logic                         irq_shv_i,
-  input  logic                         irq_priv_i,
+  input  logic [1:0]                   irq_priv_i,
 
   // Scrambling Interface
   input  logic                         scramble_key_valid_i,
@@ -183,7 +183,7 @@ module ibex_top import ibex_pkg::*; #(
   logic                        irq_software;
   logic                        irq_timer;
   logic                        irq_external;
-  logic [14:0]                 irq_fast;
+  //logic [14:0]               irq_fast; #replace these for now
   logic                        irq_nm;       // non-maskeable interrupt
 
   // Core <-> RAMs signals
@@ -247,7 +247,7 @@ module ibex_top import ibex_pkg::*; #(
   assign irq_software = irq_i[3]    ;
   assign irq_timer    = irq_i[7]    ;
   assign irq_external = irq_i[11]   ;
-  assign irq_fast     = irq_i[30:16];
+  //assign irq_fast     = irq_i[30:16];
   assign irq_nm       = irq_i[31]   ;
 
   prim_clock_gating core_clock_gate_i (
@@ -378,7 +378,7 @@ module ibex_top import ibex_pkg::*; #(
     .irq_level_i      (irq_level_i),
     .irq_shv_i        (irq_shv_i),
     .irq_priv_i       (irq_priv_i),
-    .irq_pending_o  (irq_pending),
+    .irq_pending_o    (irq_pending),
 
     .debug_req_i,
     .crash_dump_o,
@@ -794,7 +794,7 @@ module ibex_top import ibex_pkg::*; #(
       irq_software,
       irq_timer,
       irq_external,
-      irq_fast,
+      //irq_fast,
       irq_nm,
       irq_pending,
       debug_req_i,
@@ -850,7 +850,7 @@ module ibex_top import ibex_pkg::*; #(
     logic                         irq_software_local;
     logic                         irq_timer_local;
     logic                         irq_external_local;
-    logic [14:0]                  irq_fast_local;
+    //logic [14:0]                  irq_fast_local;
     logic                         irq_nm_local;
     logic                         irq_pending_local;
 
@@ -901,7 +901,7 @@ module ibex_top import ibex_pkg::*; #(
       irq_software,
       irq_timer,
       irq_external,
-      irq_fast,
+      //irq_fast,
       irq_nm,
       irq_pending,
       debug_req_i,
@@ -951,7 +951,7 @@ module ibex_top import ibex_pkg::*; #(
       irq_software_local,
       irq_timer_local,
       irq_external_local,
-      irq_fast_local,
+      //irq_fast_local,
       irq_nm_local,
       irq_pending_local,
       debug_req_local,
@@ -1062,7 +1062,7 @@ module ibex_top import ibex_pkg::*; #(
       .irq_software_i         (irq_software_local),
       .irq_timer_i            (irq_timer_local),
       .irq_external_i         (irq_external_local),
-      .irq_fast_i             (irq_fast_local),
+      //.irq_fast_i             (irq_fast_local),
       .irq_nm_i               (irq_nm_local),
       .irq_pending_i          (irq_pending_local),
 

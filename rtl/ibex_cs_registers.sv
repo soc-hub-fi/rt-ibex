@@ -23,6 +23,7 @@ module ibex_cs_registers #(
   parameter int unsigned      PMPNumRegions     = 4,
   parameter bit               RV32E             = 0,
   parameter bit               CLIC              = 1,
+  parameter bit               CLIC_SHV          = 1,
   parameter int unsigned      NUM_INTERRUPTS    = 64,
   parameter ibex_pkg::rv32m_e RV32M             = ibex_pkg::RV32MFast,
   parameter ibex_pkg::rv32b_e RV32B             = ibex_pkg::RV32BNone,
@@ -58,17 +59,21 @@ module ibex_cs_registers #(
   //input  logic                 irq_timer_i,
   //input  logic                 irq_external_i,
   //input  logic [14:0]          irq_fast_i,
-  input  logic                 nmi_mode_i,
-  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
-  input  logic                         irq_level_i,
-  input  logic                         irq_shv_i,
-  input  logic                         irq_priv_i,
-  output logic                         irq_ack_mnxti_o,
-  output logic                 irq_pending_o,          // interrupt request pending
-  output ibex_pkg::irqs_t      irqs_o,                 // interrupt requests qualified with mie
-  output logic                 csr_mstatus_mie_o,
-  output logic [31:0]          csr_mepc_o,
-  output logic [31:0]          csr_mtval_o,
+  input  logic                              nmi_mode_i,
+  input  logic [7:0]                        irq_level_i,      // instant pending interrupt level for mnxti csr
+  input  logic                              irq_shv_i,        // instant pending interrupt selective hardware vectoring for mnxti csr
+  input  logic [NUM_INTERRUPTS-1:0]         irq_i,            // instant pending interrupt for mmnxti csr
+  input  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_i, // instant pending interrupt id for mnxti csr (calculated in id_stage.sv)
+  output logic                              irq_ack_mnxti_o,
+  output logic                              csr_mstatus_mie_o,
+  input  logic [1:0]                        irq_priv_i,
+  output logic                              irq_pending_o,
+  output ibex_pkg::irqs_t                   ibex_irqs_o,      // interrupt requests qualified with mie
+  output logic [NUM_INTERRUPTS-1:3]         clic_irqs_o,      // max 4096 with 0-15 reserved
+  //output logic                              jalmnxti_ctrl_o,
+  //output logic [31:0]                       jalmnxti_pc_o,
+  output logic [31:0]                       csr_mepc_o,
+  output logic [31:0]                       csr_mtval_o,
 
   // PMP
   output ibex_pkg::pmp_cfg_t     csr_pmp_cfg_o  [PMPNumRegions],
@@ -217,12 +222,6 @@ module ibex_cs_registers #(
     logic        icache_enable;
   } cpu_ctrl_sts_part_t;
 
-  //logic         irq_software;
-  //logic         irq_timer;
-  //logic         irq_external;
-  //logic [14:0]  irq_fast;    
-  ////logic         irq_nm;      
-
   // Interrupt and exception control signals
   logic [31:0] exception_pc;
 
@@ -270,6 +269,13 @@ module ibex_cs_registers #(
   logic [31:0] dscratch0_q;
   logic [31:0] dscratch1_q;
   logic        dscratch0_en, dscratch1_en;
+
+  // CLIC signals
+  logic [        NUM_INTERRUPTS-1:0] irq_q;
+  logic                              irq_level_q;
+  logic                              irq_shv_q;
+  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_q;
+  logic [                       7:0] mpil_q, mpil_d;
 
   // CSRs for recoverable NMIs
   // NOTE: these CSRS are nonstandard, see https://github.com/riscv/riscv-isa-manual/issues/261
@@ -334,6 +340,11 @@ module ibex_cs_registers #(
 
   logic [7:0]  unused_boot_addr;
   logic [2:0]  unused_csr_addr;
+
+  logic mnxti_pass;
+  assign mnxti_pass = (irq_q) && CLIC &&
+            (irq_level_q > ((mpil_q > mintthresh_q) ? mpil_q : mintthresh_q)) &&
+            ((~CLIC_SHV) || (~irq_shv_q));
 
   assign unused_boot_addr = boot_addr_i[7:0];
 
@@ -472,9 +483,9 @@ module ibex_cs_registers #(
             $fatal(1, "[rt-ibex] More than two bit set in irq_i (one-hot)");
           `endif
           csr_rdata_int = '0;
-          
+
         end
-      end       
+      end
 
       CSR_MINTSATUS:    csr_rdata_int = mintstatus_q;
 
@@ -1318,6 +1329,19 @@ module ibex_cs_registers #(
   //  .rd_data_o (mclicbase_q),
   //  .rd_error_o()
   //);
+
+  always_ff @(posedge clk_i or negedge rst_ni)
+  begin : register_irq_inputs
+    if(rst_ni) begin
+      irq_q       <= '0;
+      irq_level_q <= '0;
+      irq_shv_q   <= '0;
+    end else begin
+      irq_q       <= irq_i;
+      irq_shv_q   <= irq_shv_i;
+      irq_level_q <= irq_level_i;
+    end
+  end
 
   // -----------------
   // PMP registers

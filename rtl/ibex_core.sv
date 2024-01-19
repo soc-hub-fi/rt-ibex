@@ -98,15 +98,16 @@ module ibex_core import ibex_pkg::*; #(
 
   // Interrupt inputs
   input  logic [NUM_INTERRUPTS-1:0]    irq_i,
-  input  logic                         irq_level_i,
+  input  logic [7:0]                   irq_level_i,
   input  logic                         irq_shv_i,
-  input  logic                         irq_priv_i,
+  input  logic [1:0]                   irq_priv_i,
+  output logic                         irq_pending_o,
+
   //input  logic                         irq_software_i,
   //input  logic                         irq_timer_i,
   //input  logic                         irq_external_i,
   //input  logic [14:0]                  irq_fast_i,
   //input  logic                         irq_nm_i,       // non-maskeable interrupt
-  output logic                         irq_pending_o,
 
 
   // Debug Interface
@@ -1051,10 +1052,13 @@ module ibex_core import ibex_pkg::*; #(
     .irq_i            (irq_i),
     .irq_level_i      (irq_level_i),
     .irq_shv_i        (irq_shv_i),
-    .irq_priv_i       (irq_priv_i),
     .nmi_mode_i       (nmi_mode),
+    .irq_priv_i       (irq_priv_i),
     .irq_pending_o    (irq_pending_o),
-    .irqs_o           (irqs),
+    .irq_ack_mnxti_o  (),
+    .irq_id_instant_i (),
+    .ibex_irqs_o           (irqs),
+    .clic_irqs_o      (),
     .csr_mstatus_mie_o(csr_mstatus_mie),
     .csr_mstatus_tw_o (csr_mstatus_tw),
     .csr_mepc_o       (csr_mepc),
