@@ -313,9 +313,19 @@ package ibex_pkg;
     logic        irq_software;
     logic        irq_timer;
     logic        irq_external;
-    logic [14:0] irq_fast; // 15 fast interrupts,
+    //logic [14:0] irq_fast; // 15 fast interrupts, // replaced in this fork
                           // one interrupt is reserved for NMI (not visible through mip/mie)
   } irqs_t;
+
+  // interrupt status (clic)
+  typedef struct packed {
+    logic [31:24] mil;
+    logic [23:16] reserved;
+    // hardwired to '0
+    logic [15:8]  sil;
+    // hardwired to '0
+    logic [7:0]   uil;
+  } mintstatus_t;
 
   typedef struct packed {
     logic       irq_int;

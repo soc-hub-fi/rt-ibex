@@ -318,10 +318,14 @@ module ibex_core import ibex_pkg::*; #(
   logic           dummy_instr_wb;
 
   // Interrupts
-  logic        nmi_mode;
-  irqs_t       irqs;
-  logic        csr_mstatus_mie;
-  logic [31:0] csr_mepc, csr_depc;
+  logic                              nmi_mode;
+  irqs_t                             ibex_irqs;
+  logic [NUM_INTERRUPTS-1:4]         clic_irqs; // 0-15 reserved
+  logic                              csr_mstatus_mie;
+  logic [31:0]                       csr_mepc, csr_depc;
+  logic [31:0]                       mintstatus;
+  logic [7:0]                        mintthresh;
+  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id;
 
   // PMP signals
   logic [33:0]  csr_pmp_addr [PMPNumRegions];
@@ -641,11 +645,19 @@ module ibex_core import ibex_pkg::*; #(
     .lsu_store_resp_intg_err_i(lsu_store_resp_intg_err),
 
     // Interrupt Signals
-    .csr_mstatus_mie_i(csr_mstatus_mie),
-    .irq_pending_i    (irq_pending_o),
-    .irqs_i           (irqs),
-    .irq_nm_i         (irq_nm_i),
-    .nmi_mode_o       (nmi_mode),
+    .csr_mstatus_mie_i( csr_mstatus_mie),
+    .irq_pending_i    ( irq_pending_o  ),
+    .irqs_i           ( ibex_irqs      ),
+    .clic_irqs_i      ( clic_irqs      ),
+    .irq_level_i      ( irq_level_i    ),
+    //.mie_bypass_i     ( mie_bypass ),
+    .mintthresh_i     ( mintthresh     ),
+    .mintstatus_i     ( mintstatus     ),
+    .irq_ack_o        ( irq_ack        ), // interrupt acknowledge signal sent by id_stage
+    .irq_id_o         ( irq_id         ),
+    .irq_id_ctrl_o    ( irq_id_instant ), // irq_id_ctrl_o is sent to cs_register module for mnxti csr operation
+    .irq_nm_i         ( irq_nm_i       ),
+    .nmi_mode_o       ( nmi_mode       ),
 
     // Debug Signal
     .debug_mode_o         (debug_mode),
@@ -1057,8 +1069,10 @@ module ibex_core import ibex_pkg::*; #(
     .irq_pending_o    (irq_pending_o),
     .irq_ack_mnxti_o  (),
     .irq_id_instant_i (),
-    .ibex_irqs_o           (irqs),
-    .clic_irqs_o      (),
+    .ibex_irqs_o      (ibex_irqs),
+    .clic_irqs_o      (clic_irqs),
+    .mintstatus_o     (mintstatus),
+    .mintthresh_o     (mintthresh),
     .csr_mstatus_mie_o(csr_mstatus_mie),
     .csr_mstatus_tw_o (csr_mstatus_tw),
     .csr_mepc_o       (csr_mepc),

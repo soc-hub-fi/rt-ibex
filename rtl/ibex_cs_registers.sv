@@ -69,7 +69,9 @@ module ibex_cs_registers #(
   input  logic [1:0]                        irq_priv_i,
   output logic                              irq_pending_o,
   output ibex_pkg::irqs_t                   ibex_irqs_o,      // interrupt requests qualified with mie
-  output logic [NUM_INTERRUPTS-1:3]         clic_irqs_o,      // max 4096 with 0-15 reserved
+  output logic [NUM_INTERRUPTS-1:4]         clic_irqs_o,      // max 4096 with 0-15 reserved
+  output logic [7:0]      mintthresh_o,
+  output ibex_pkg::mintstatus_t             mintstatus_o,
   //output logic                              jalmnxti_ctrl_o,
   //output logic [31:0]                       jalmnxti_pc_o,
   output logic [31:0]                       csr_mepc_o,
@@ -367,7 +369,7 @@ module ibex_cs_registers #(
   assign mip.irq_software = irq_i[3];
   assign mip.irq_timer    = irq_i[7];
   assign mip.irq_external = irq_i[11];
-  assign mip.irq_fast     = irq_i[30:16];
+  //assign mip.irq_fast     = irq_i[30:16];
 
   assign minhv_n = mcause_d.minhv;
   assign minhv_q = mcause_q.minhv;
@@ -421,7 +423,7 @@ module ibex_cs_registers #(
           csr_rdata_int[CSR_MSIX_BIT]                       = mie_q.irq_software;
           csr_rdata_int[CSR_MTIX_BIT]                       = mie_q.irq_timer;
           csr_rdata_int[CSR_MEIX_BIT]                       = mie_q.irq_external;
-          csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mie_q.irq_fast;
+          //csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mie_q.irq_fast;
         end
       end
 
@@ -466,7 +468,7 @@ module ibex_cs_registers #(
           csr_rdata_int[CSR_MSIX_BIT]                       = mip.irq_software;
           csr_rdata_int[CSR_MTIX_BIT]                       = mip.irq_timer;
           csr_rdata_int[CSR_MEIX_BIT]                       = mip.irq_external;
-          csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
+          //csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
         end
       end
 
@@ -1053,7 +1055,7 @@ module ibex_cs_registers #(
   assign mie_d.irq_software = csr_wdata_int[CSR_MSIX_BIT];
   assign mie_d.irq_timer    = csr_wdata_int[CSR_MTIX_BIT];
   assign mie_d.irq_external = csr_wdata_int[CSR_MEIX_BIT];
-  assign mie_d.irq_fast     = csr_wdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW];
+  //assign mie_d.irq_fast     = csr_wdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW];
   ibex_csr #(
     .Width     ($bits(irqs_t)),
     .ShadowCopy(1'b0),
@@ -1315,20 +1317,6 @@ module ibex_cs_registers #(
     .rd_data_o (mscratchswl_q),
     .rd_error_o()
   );
-
-  //// MCLICBASE
-  //ibex_csr #(
-  //  .Width     (32),
-  //  .ShadowCopy(ShadowCSR),
-  //  .ResetValue('0)
-  //) u_mclicbase_csr (
-  //  .clk_i     (clk_i),
-  //  .rst_ni    (rst_ni),
-  //  .wr_data_i (mclicbase_d),
-  //  .wr_en_i   (mclicbase_en),
-  //  .rd_data_o (mclicbase_q),
-  //  .rd_error_o()
-  //);
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin : register_irq_inputs

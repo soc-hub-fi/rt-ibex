@@ -414,15 +414,15 @@ module ibex_controller #(
       (irq_nm | (irq_pending_i & irq_enabled));
 
   // generate ID of fast interrupts, highest priority to lowest ID
-  always_comb begin : gen_mfip_id
-    mfip_id = 4'd0;
-
-    for (int i = 14; i >= 0; i--) begin
-      if (irqs_i.irq_fast[i]) begin
-        mfip_id = i[3:0];
-      end
-    end
-  end
+  //always_comb begin : gen_mfip_id
+  //  mfip_id = 4'd0;
+//
+  //  for (int i = 14; i >= 0; i--) begin
+  //    if (irqs_i.irq_fast[i]) begin
+  //      mfip_id = i[3:0];
+  //    end
+  //  end
+  //end
 
   assign unused_irq_timer = irqs_i.irq_timer;
 
@@ -655,15 +655,16 @@ module ibex_controller #(
             end
 
             nmi_mode_d  = 1'b1; // enter NMI mode
-          end else if (irqs_i.irq_fast != 15'b0) begin
-            // generate exception cause ID from fast interrupt ID:
-            // - first bit distinguishes interrupts from exceptions,
-            // - second bit adds 16 to fast interrupt ID
-            // for example ExcCauseIrqFast0 = {1'b1, 5'd16}
-            exc_cause_o = 
-              '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};
-
-          end else if (irqs_i.irq_external) begin
+          //end else if (irqs_i.irq_fast != 15'b0) begin
+          //  // generate exception cause ID from fast interrupt ID:
+          //  // - first bit distinguishes interrupts from exceptions,
+          //  // - second bit adds 16 to fast interrupt ID
+          //  // for example ExcCauseIrqFast0 = {1'b1, 5'd16}
+          //  exc_cause_o = 
+          //    '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};
+//
+          end 
+          else if (irqs_i.irq_external) begin
             exc_cause_o = ExcCauseIrqExternalM;
           end else if (irqs_i.irq_software) begin
             exc_cause_o = ExcCauseIrqSoftwareM;

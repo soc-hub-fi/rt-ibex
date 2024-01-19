@@ -25,7 +25,8 @@ module ibex_id_stage #(
   parameter bit               BranchTargetALU = 0,
   parameter bit               WritebackStage  = 0,
   parameter bit               BranchPredictor = 0,
-  parameter bit               MemECC          = 1'b0
+  parameter bit               MemECC          = 1'b0,
+  parameter int unsigned      NUM_INTERRUPTS  = 64
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
@@ -127,8 +128,19 @@ module ibex_id_stage #(
   input  logic                      csr_mstatus_mie_i,
   input  logic                      irq_pending_i,
   input  ibex_pkg::irqs_t           irqs_i,
+  input  logic [NUM_INTERRUPTS-1:4] clic_irqs_i,
   input  logic                      irq_nm_i,
   output logic                      nmi_mode_o,
+  input  logic [7:0]                irq_level_i,
+  //input  logic [31:0]               mie_bypass_i,// MIE CSR (bypass)
+  //output logic [31:0]               mip_o,       // MIP CSR
+  //input  logic                      m_irq_enable_i,
+  input  logic [7:0]                mintthresh_i,
+  input  ibex_pkg::mintstatus_t     mintstatus_i,
+  output logic                      irq_ack_o,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
+  //output logic [$clog2(NUM_INTERRUPTS)-1:0] exc_cause_o,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl_o, // send interrupt id to cs_register module for mnxti csr operation
 
   input  logic                      lsu_load_err_i,
   input  logic                      lsu_load_resp_intg_err_i,
