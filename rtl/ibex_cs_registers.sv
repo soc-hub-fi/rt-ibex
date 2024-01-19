@@ -109,7 +109,6 @@ module ibex_cs_registers #(
   output logic                 double_fault_seen_o,
 
   // CLIC signals
-  input logic                  minhv_i,
 
   // Performance Counters
   input  logic                 instr_ret_i,                 // instr retired in ID/EX stage
@@ -228,7 +227,7 @@ module ibex_cs_registers #(
   logic        mscratch_en;
   logic [31:0] mepc_q, mepc_d;
   logic        mepc_en;
-  logic [31:0] mcause_q, mcause_d;
+  exc_cause_t  mcause_q, mcause_d;
   logic        mcause_en;
   logic [31:0] mtval_q, mtval_d;
   logic        mtval_en;
@@ -347,8 +346,8 @@ module ibex_cs_registers #(
   assign mip.irq_external = irq_external_i;
   assign mip.irq_fast     = irq_fast_i;
 
-  assign minhv_n = mcause_d[30];
-  assign minhv_q = mcause_q[30];
+  assign minhv_n = mcause_d.minhv;
+  assign minhv_q = mcause_q.minhv;
 
   // read logic
   always_comb begin
@@ -422,19 +421,17 @@ module ibex_cs_registers #(
       // mcause: exception cause
       CSR_MCAUSE: 
         if (CLIC) begin
-          csr_rdata_int[31]    = mcause_q[$clog2(NUM_INTERRUPTS)];
-          csr_rdata_int[30]    = minhv_q;
-          csr_rdata_int[29:29] = mstatus_q.mpp[1:0];
-          csr_rdata_int[27]    = mstatus_q.mpie;
-          csr_rdata_int[26:24] = '0; // reserved
-          csr_rdata_int[23:16] = mpil_q;
-          csr_rdata_int[15:12] = '0; // reserved
-          csr_rdata_int[ 11:$clog2(NUM_INTERRUPTS)]  = '0;
-          csr_rdata_int[$clog2(NUM_INTERRUPTS)-1:0]  = mcause_q[$clog2(NUM_INTERRUPTS)-1:0];
+          csr_rdata_int = { mcause_q.irq_ext | mcause_q.irq_int,
+                            mcause_q.minhv,
+                            mstatus_q.mpp[1:0],
+                            mstatus_q.mpie,
+                            mcause_q.mpil[7:0],
+                            mcause_q.lower_cause[4:0]};
         end else
-          csr_rdata_int = {mcause_q.irq_ext | mcause_q.irq_int,
-                                   mcause_q.irq_int ? {26{1'b1}} : 26'b0,
-                                   mcause_q.lower_cause[4:0]};
+          $fatal("Non-CLIC mode currently not supported on this implementation.");
+          //csr_rdata_int = {mcause_q.irq_ext | mcause_q.irq_int,
+          //                         mcause_q.irq_int ? {26{1'b1}} : 26'b0,
+          //                         mcause_q.lower_cause[4:0]};
 
       // mtval: trap value
       CSR_MTVAL: csr_rdata_int = mtval_q;
@@ -705,7 +702,9 @@ module ibex_cs_registers #(
         end
 
         // interrupt enable
-        CSR_MIE: mie_en = 1'b1;
+        CSR_MIE: 
+          if (!CLIC)
+            mie_en = 1'b1;
 
         CSR_MSCRATCH: mscratch_en = 1'b1;
 
@@ -715,18 +714,19 @@ module ibex_cs_registers #(
         // mcause
         CSR_MCAUSE: begin
           mcause_en = 1'b1;
-          if (CLIC) begin
-            mcause_n[$clog2(NUM_INTERRUPTS)]        = csr_wdata_int[31];
-            minhv_n            = csr_wdata_int[30]; // TODO: implement
-            mstatus_n.mpp[1:0] = csr_wdata_int[29:28];
-            mstatus_n.mpie     = csr_wdata_int[27];
-            //csr_wdata_int[26:24]; // reserved
-            mpil_n             = csr_wdata_int[23:16]; //TODO
-            //csr_wdata_int[15:12]; // reserved
-            //csr_wdata_int[11:$clog2(NUM_INTERRUPTS)];  // TODO: when more interrupt lines
-            mcause_n[$clog2(NUM_INTERRUPTS)-1:0]      = csr_wdata_int[$clog2(NUM_INTERRUPTS)-1:0];
+          if (CLIC) begin 
+            mcause_d = '{ irq_ext     : csr_wdata_int[31] == 1'b0,
+                          irq_int     : csr_wdata_int[31] == 1'b1,
+                          minhv       : csr_wdata_int[30],
+                          mpp         : csr_wdata_int[29:28],
+                          mpie        : csr_wdata_int[27],
+                          mpil        : csr_wdata_int[23:16],
+                          lower_cause : csr_wdata_int[4:0]};
           end else
-            mcause_n = {csr_wdata_int[31], csr_wdata_int[$clog2(NUM_INTERRUPTS)-1:0]};
+            $fatal("Non-CLIC mode currently not supported on this implementation.");
+            //mcause_d = '{irq_ext : csr_wdata_int[31:30] == 2'b10,
+            //             irq_int : csr_wdata_int[31:30] == 2'b11,
+            //             lower_cause: csr_wdata_int[4:0]};
         end 
         // TODO: CLIC
 
@@ -1048,7 +1048,7 @@ module ibex_cs_registers #(
 
   // MCAUSE
   ibex_csr #(
-    .Width     (32),
+    .Width     ($bits(exc_cause_t)),
     .ShadowCopy(1'b0),
     .ResetValue('0)
   ) u_mcause_csr (

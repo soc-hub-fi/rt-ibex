@@ -648,7 +648,7 @@ module ibex_controller #(
           if (irq_nm && !nmi_mode_q) begin
             exc_cause_o =
               irq_nm_ext_i ? ExcCauseIrqNm :
-                             '{irq_ext: 1'b0, irq_int: 1'b1, lower_cause: irq_nm_int_cause};
+                             '{irq_ext: 1'b0, irq_int: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: irq_nm_int_cause};
 
             if (irq_nm_int & !irq_nm_ext_i) begin
               csr_mtval_o = irq_nm_int_mtval;
@@ -660,7 +660,9 @@ module ibex_controller #(
             // - first bit distinguishes interrupts from exceptions,
             // - second bit adds 16 to fast interrupt ID
             // for example ExcCauseIrqFast0 = {1'b1, 5'd16}
-            exc_cause_o = '{irq_ext: 1'b1, irq_int: 1'b0, lower_cause: {1'b1, mfip_id}};
+            exc_cause_o = 
+              '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};
+
           end else if (irqs_i.irq_external) begin
             exc_cause_o = ExcCauseIrqExternalM;
           end else if (irqs_i.irq_software) begin
