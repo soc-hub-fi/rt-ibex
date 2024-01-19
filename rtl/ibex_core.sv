@@ -40,6 +40,7 @@ module ibex_core import ibex_pkg::*; #(
   parameter bit          RegFileECC        = 1'b0,
   parameter int unsigned RegFileDataWidth  = 32,
   parameter bit          MemECC            = 1'b0,
+  parameter int unsigned NUM_INTERRUPTS    = 64,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32,
   parameter int unsigned DmHaltAddr        = 32'h1A110800,
   parameter int unsigned DmExceptionAddr   = 32'h1A110808
@@ -96,12 +97,17 @@ module ibex_core import ibex_pkg::*; #(
   output logic                         ic_scr_key_req_o,
 
   // Interrupt inputs
-  input  logic                         irq_software_i,
-  input  logic                         irq_timer_i,
-  input  logic                         irq_external_i,
-  input  logic [14:0]                  irq_fast_i,
-  input  logic                         irq_nm_i,       // non-maskeable interrupt
+  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
+  input  logic                         irq_level_i,
+  input  logic                         irq_shv_i,
+  input  logic                         irq_priv_i,
+  //input  logic                         irq_software_i,
+  //input  logic                         irq_timer_i,
+  //input  logic                         irq_external_i,
+  //input  logic [14:0]                  irq_fast_i,
+  //input  logic                         irq_nm_i,       // non-maskeable interrupt
   output logic                         irq_pending_o,
+
 
   // Debug Interface
   input  logic                         debug_req_i,
@@ -1017,7 +1023,8 @@ module ibex_core import ibex_pkg::*; #(
     .PMPNumRegions    (PMPNumRegions),
     .RV32E            (RV32E),
     .RV32M            (RV32M),
-    .RV32B            (RV32B)
+    .RV32B            (RV32B),
+    .NUM_INTERRUPTS   (NUM_INTERRUPTS)
   ) cs_registers_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -1041,10 +1048,10 @@ module ibex_core import ibex_pkg::*; #(
     .csr_rdata_o (csr_rdata),
 
     // Interrupt related control signals
-    .irq_software_i   (irq_software_i),
-    .irq_timer_i      (irq_timer_i),
-    .irq_external_i   (irq_external_i),
-    .irq_fast_i       (irq_fast_i),
+    .irq_i            (irq_i),
+    .irq_level_i      (irq_level_i),
+    .irq_shv_i        (irq_shv_i),
+    .irq_priv_i       (irq_priv_i),
     .nmi_mode_i       (nmi_mode),
     .irq_pending_o    (irq_pending_o),
     .irqs_o           (irqs),

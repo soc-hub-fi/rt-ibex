@@ -23,9 +23,10 @@ module ibex_cs_registers #(
   parameter int unsigned      PMPNumRegions     = 4,
   parameter bit               RV32E             = 0,
   parameter bit               CLIC              = 1,
-  parameter bit               NUM_INTERRUPTS    = 64,
+  parameter int unsigned      NUM_INTERRUPTS    = 64,
   parameter ibex_pkg::rv32m_e RV32M             = ibex_pkg::RV32MFast,
-  parameter ibex_pkg::rv32b_e RV32B             = ibex_pkg::RV32BNone
+  parameter ibex_pkg::rv32b_e RV32B             = ibex_pkg::RV32BNone,
+  parameter logic [31:0]      MCLICBASE_ADDR    = 32'h0005_0000
 ) (
   // Clock and Reset
   input  logic                 clk_i,
@@ -53,11 +54,16 @@ module ibex_cs_registers #(
   output logic [31:0]          csr_rdata_o,
 
   // interrupts
-  input  logic                 irq_software_i,
-  input  logic                 irq_timer_i,
-  input  logic                 irq_external_i,
-  input  logic [14:0]          irq_fast_i,
+  //input  logic                 irq_software_i,
+  //input  logic                 irq_timer_i,
+  //input  logic                 irq_external_i,
+  //input  logic [14:0]          irq_fast_i,
   input  logic                 nmi_mode_i,
+  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
+  input  logic                         irq_level_i,
+  input  logic                         irq_shv_i,
+  input  logic                         irq_priv_i,
+  output logic                         irq_ack_mnxti_o,
   output logic                 irq_pending_o,          // interrupt request pending
   output ibex_pkg::irqs_t      irqs_o,                 // interrupt requests qualified with mie
   output logic                 csr_mstatus_mie_o,
@@ -211,6 +217,12 @@ module ibex_cs_registers #(
     logic        icache_enable;
   } cpu_ctrl_sts_part_t;
 
+  //logic         irq_software;
+  //logic         irq_timer;
+  //logic         irq_external;
+  //logic [14:0]  irq_fast;    
+  ////logic         irq_nm;      
+
   // Interrupt and exception control signals
   logic [31:0] exception_pc;
 
@@ -341,10 +353,10 @@ module ibex_cs_registers #(
                                               illegal_csr_dbg);
 
   // mip CSR is purely combinational - must be able to re-enable the clock upon WFI
-  assign mip.irq_software = irq_software_i;
-  assign mip.irq_timer    = irq_timer_i;
-  assign mip.irq_external = irq_external_i;
-  assign mip.irq_fast     = irq_fast_i;
+  assign mip.irq_software = irq_i[3];
+  assign mip.irq_timer    = irq_i[7];
+  assign mip.irq_external = irq_i[11];
+  assign mip.irq_fast     = irq_i[30:16];
 
   assign minhv_n = mcause_d.minhv;
   assign minhv_q = mcause_q.minhv;
@@ -403,9 +415,7 @@ module ibex_cs_registers #(
       end
 
       // mcounteren: machine counter enable
-      CSR_MCOUNTEREN: begin
-        csr_rdata_int = '0;
-      end
+      CSR_MCOUNTEREN: csr_rdata_int = '0;
 
       CSR_MSCRATCH: csr_rdata_int = mscratch_q;
 
@@ -450,7 +460,21 @@ module ibex_cs_registers #(
       end
 
       // CLIC registers
-      CSR_MNXTI:        csr_rdata_int = mnxti_q;
+      CSR_MNXTI: begin
+        if (mnxti_pass) begin
+          csr_rdata_int[31:8] = mtvt_q;
+          csr_rdata_int[ 7:2] = irq_id_instant_q;
+          csr_rdata_int[ 1:0] = '0; // XLEN is fixed to 32, so XLEN/8 = 4
+        end else begin 
+          // to check if irq_q is onehot signal
+          `ifndef VERILATOR
+            assert final ($onehot0(irq_q)) else
+            $fatal(1, "[rt-ibex] More than two bit set in irq_i (one-hot)");
+          `endif
+          csr_rdata_int = '0;
+          
+        end
+      end       
 
       CSR_MINTSATUS:    csr_rdata_int = mintstatus_q;
 
@@ -460,7 +484,7 @@ module ibex_cs_registers #(
 
       CSR_MSCRATCHSWL:  csr_rdata_int = mscratchswl_q;
 
-      CSR_MCLICBASE:    csr_rdata_int = mclicbase_q;
+      CSR_MCLICBASE:    csr_rdata_int = MCLICBASE_ADDR;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
@@ -1281,19 +1305,19 @@ module ibex_cs_registers #(
     .rd_error_o()
   );
 
-  // MCLICBASE
-  ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
-  ) u_mclicbase_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mclicbase_d),
-    .wr_en_i   (mclicbase_en),
-    .rd_data_o (mclicbase_q),
-    .rd_error_o()
-  );
+  //// MCLICBASE
+  //ibex_csr #(
+  //  .Width     (32),
+  //  .ShadowCopy(ShadowCSR),
+  //  .ResetValue('0)
+  //) u_mclicbase_csr (
+  //  .clk_i     (clk_i),
+  //  .rst_ni    (rst_ni),
+  //  .wr_data_i (mclicbase_d),
+  //  .wr_en_i   (mclicbase_en),
+  //  .rd_data_o (mclicbase_q),
+  //  .rd_error_o()
+  //);
 
   // -----------------
   // PMP registers

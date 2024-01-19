@@ -74,7 +74,6 @@ module ibex_top import ibex_pkg::*; #(
   input  logic                         data_err_i,
 
   // Interrupt inputs
-
   input  logic [NUM_INTERRUPTS-1:0]    irq_i,
   input  logic                         irq_level_i,
   input  logic                         irq_shv_i,
@@ -245,11 +244,11 @@ module ibex_top import ibex_pkg::*; #(
 
   assign core_sleep_o = ~clock_en;
 
-  assign irq_software_i = irq_i[3]    ;
-  assign irq_timer_i    = irq_i[7]    ;
-  assign irq_external_i = irq_i[11]   ;
-  assign irq_fast_i     = irq_i[30:16];
-  assign irq_nm_i       = irq_i[31]   ;
+  assign irq_software = irq_i[3]    ;
+  assign irq_timer    = irq_i[7]    ;
+  assign irq_external = irq_i[11]   ;
+  assign irq_fast     = irq_i[30:16];
+  assign irq_nm       = irq_i[31]   ;
 
   prim_clock_gating core_clock_gate_i (
     .clk_i    (clk_i),
@@ -370,11 +369,15 @@ module ibex_top import ibex_pkg::*; #(
     .ic_scr_key_valid_i(scramble_key_valid_q),
     .ic_scr_key_req_o  (ic_scr_key_req),
 
-    .irq_software_i (irq_software),
-    .irq_timer_i    (irq_timer),
-    .irq_external_i (irq_external),
-    .irq_fast_i     (irq_fast),
-    .irq_nm_i       (irq_nm),
+    //.irq_software_i (irq_software),
+    //.irq_timer_i    (irq_timer),
+    //.irq_external_i (irq_external),
+    //.irq_fast_i     (irq_fast),
+    //.irq_nm_i       (irq_nm),
+    .irq_i            (irq_i),
+    .irq_level_i      (irq_level_i),
+    .irq_shv_i        (irq_shv_i),
+    .irq_priv_i       (irq_priv_i),
     .irq_pending_o  (irq_pending),
 
     .debug_req_i,
