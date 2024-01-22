@@ -28,6 +28,8 @@ module ibex_if_stage import ibex_pkg::*; #(
   parameter lfsr_perm_t  RndCnstLfsrPerm   = RndCnstLfsrPermDefault,
   parameter bit          BranchPredictor   = 1'b0,
   parameter bit          MemECC            = 1'b0,
+  parameter bit          CLIC              = 1'b1,
+  parameter bit          CLIC_SHV          = 1'b1,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32
 ) (
   input  logic                         clk_i,
@@ -44,6 +46,14 @@ module ibex_if_stage import ibex_pkg::*; #(
   input  logic [MemDataWidth-1:0]     instr_rdata_i,
   input  logic                        instr_bus_err_i,
   output logic                        instr_intg_err_o,
+
+  // CLIC interface
+  // Interrupts Selective Hardware Vectoring
+  input logic  irq_shv_i,
+  output logic minhv_o,
+  input  logic [23:0] m_trap_base_addr_i,
+  input  logic [23:0] m_trap_base_addr_clic_shv_i,
+  input  logic [$clog2(NUM_INTERRUPTS)-1:0] m_exc_vec_pc_mux_i,    // selects ISR address for vectorized interrupt lines
 
   // ICache RAM IO
   output logic [IC_NUM_WAYS-1:0]      ic_tag_req_o,
@@ -110,6 +120,7 @@ module ibex_if_stage import ibex_pkg::*; #(
                                                                 // the debug request
   input  logic [31:0]                 csr_mtvec_i,              // base PC to jump to on exception
   output logic                        csr_mtvec_init_o,         // tell CS regfile to init mtvec
+  output logic                        csr_mtvt_init_o,       // tell CS regfile to init mtvt
 
   // pipeline stall
   input  logic                        id_in_ready_i,            // ID stage is ready for new instr
@@ -220,6 +231,9 @@ module ibex_if_stage import ibex_pkg::*; #(
 
   // tell CS register file to initialize mtvec on boot
   assign csr_mtvec_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
+
+  // tell CS register file to initialize mtvt on boot
+  assign csr_mtvt_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
 
   // SEC_CM: BUS.INTEGRITY
   if (MemECC) begin : g_mem_ecc
