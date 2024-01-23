@@ -64,8 +64,8 @@ module ibex_cs_registers #(
   output logic                              csr_mstatus_mie_o,
   input  logic [1:0]                        irq_priv_i,
   output logic                              irq_pending_o,
-  output ibex_pkg::irqs_t                   ibex_irqs_o,      // interrupt requests qualified with mie
-  output logic [NUM_INTERRUPTS-1:4]         clic_irqs_o,      // max 4096 with 0-15 reserved
+  //output ibex_pkg::irqs_t                   ibex_irqs_o,      // interrupt requests qualified with mie
+  //output logic [NUM_INTERRUPTS-1:4]         clic_irqs_o,      // max 4096 with 0-15 reserved
   output logic [7:0]      mintthresh_o,
   output ibex_pkg::mintstatus_t             mintstatus_o,
   //output logic                              jalmnxti_ctrl_o,
@@ -358,6 +358,7 @@ module ibex_cs_registers #(
   assign unused_boot_addr = boot_addr_i[7:0];
   
   assign mtvec_mode_o = MTVEC_MODE; // TODO: add support for vectored and CLIC mtvec mode
+  assign csr_mtvt_o   = mtvt_q;
 
   /////////////
   // CSR reg //
