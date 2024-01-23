@@ -344,6 +344,7 @@ module ibex_core import ibex_pkg::*; #(
   logic [31:0]                       mie_bypass;
   logic [31:0]                       mip;
   logic                              minhv;
+  logic                              irq_nm;
 
   // PMP signals
   logic [33:0]  csr_pmp_addr [PMPNumRegions];
@@ -408,6 +409,8 @@ module ibex_core import ibex_pkg::*; #(
 
   assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
     ? exc_cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
+
+  assign irq_nm = irq_i[31];
 
   //////////////////////
   // Clock management //
@@ -707,7 +710,7 @@ module ibex_core import ibex_pkg::*; #(
     .irq_ack_o        ( irq_ack        ), // interrupt acknowledge signal sent by id_stage
     .irq_id_o         ( irq_id         ),
     .irq_id_ctrl_o    ( irq_id_instant ), // irq_id_ctrl_o is sent to cs_register module for mnxti csr operation
-    .irq_nm_i         ( irq_nm_i       ),
+    .irq_nm_i         ( irq_nm         ),
     .nmi_mode_o       ( nmi_mode       ),
     .mip_o            ( mip            ),
     .m_irq_enable_i   ( m_irq_enable   ),

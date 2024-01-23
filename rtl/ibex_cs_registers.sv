@@ -55,10 +55,6 @@ module ibex_cs_registers #(
   output logic [31:0]          csr_rdata_o,
 
   // interrupts
-  //input  logic                 irq_software_i,
-  //input  logic                 irq_timer_i,
-  //input  logic                 irq_external_i,
-  //input  logic [14:0]          irq_fast_i,
   input  logic                              nmi_mode_i,
   input  logic [7:0]                        irq_level_i,      // instant pending interrupt level for mnxti csr
   input  logic                              irq_shv_i,        // instant pending interrupt selective hardware vectoring for mnxti csr
@@ -360,6 +356,8 @@ module ibex_cs_registers #(
             ((~CLIC_SHV) || (~irq_shv_q));
 
   assign unused_boot_addr = boot_addr_i[7:0];
+  
+  assign mtvec_mode_o = MTVEC_MODE; // TODO: add support for vectored and CLIC mtvec mode
 
   /////////////
   // CSR reg //
@@ -677,6 +675,7 @@ module ibex_cs_registers #(
     mstatus_en   = 1'b0;
     mstatus_d    = mstatus_q;
     medeleg_d    = csr_wdata_int;
+    medeleg_en   = 1'b0;
     mie_en       = 1'b0;
     mscratch_en  = 1'b0;
     mepc_en      = 1'b0;
@@ -748,7 +747,8 @@ module ibex_cs_registers #(
             mstatus_d.mpp = PRIV_LVL_U;
           end
         end
-
+        
+        CSR_MEDELEG: medeleg_en = 1'b1;
         // interrupt enable
         CSR_MIE: 
           if (!CLIC)
