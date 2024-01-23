@@ -76,6 +76,17 @@ module ibex_cs_registers #(
   //output logic [31:0]                       jalmnxti_pc_o,
   output logic [31:0]                       csr_mepc_o,
   output logic [31:0]                       csr_mtval_o,
+  input  logic [7:0]                        csr_irq_level_i,
+  output logic [23:0]                       csr_mtvt_o,
+  output logic [1:0]                        mtvec_mode_o,
+  input  logic [31:0]                       mtvec_addr_i,
+  input  logic [31:0]                       mtvt_addr_i,
+  input  logic                              csr_mtvt_init_i,
+  output logic                              mie_bypass_o,
+  input  logic                              mip_i,
+  output logic                              m_irq_enable_o,
+  input  logic                              minhv_i,
+  output logic [7:0]                        priv_lvl_o,
 
   // PMP
   output ibex_pkg::pmp_cfg_t     csr_pmp_cfg_o  [PMPNumRegions],

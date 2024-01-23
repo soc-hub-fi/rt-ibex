@@ -41,9 +41,12 @@ module ibex_core import ibex_pkg::*; #(
   parameter int unsigned RegFileDataWidth  = 32,
   parameter bit          MemECC            = 1'b0,
   parameter int unsigned NUM_INTERRUPTS    = 64,
+  parameter bit          CLIC              = 1'b1,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32,
   parameter int unsigned DmHaltAddr        = 32'h1A110800,
-  parameter int unsigned DmExceptionAddr   = 32'h1A110808
+  parameter int unsigned DmExceptionAddr   = 32'h1A110808,
+  parameter int unsigned MCLICBASE_ADDR    = 32'h00050000,
+  localparam bit         CLIC_SHV          = 1'b1
 ) (
   // Clock and Reset
   input  logic                         clk_i,
@@ -51,6 +54,8 @@ module ibex_core import ibex_pkg::*; #(
 
   input  logic [31:0]                  hart_id_i,
   input  logic [31:0]                  boot_addr_i,
+  input  logic [31:0]                  mtvec_addr_i,
+  input  logic [31:0]                  mtvt_addr_i,
 
   // Instruction memory interface
   output logic                         instr_req_o,
@@ -97,11 +102,13 @@ module ibex_core import ibex_pkg::*; #(
   output logic                         ic_scr_key_req_o,
 
   // Interrupt inputs
-  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
-  input  logic [7:0]                   irq_level_i,
-  input  logic                         irq_shv_i,
-  input  logic [1:0]                   irq_priv_i,
-  output logic                         irq_pending_o,
+  input  logic [NUM_INTERRUPTS-1:0]         irq_i,
+  input  logic [7:0]                        irq_level_i,
+  input  logic                              irq_shv_i,
+  input  logic [1:0]                        irq_priv_i,
+  output logic                              irq_pending_o,
+  output logic                              irq_ack_o,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
 
   //input  logic                         irq_software_i,
   //input  logic                         irq_timer_i,
@@ -211,7 +218,10 @@ module ibex_core import ibex_pkg::*; #(
   logic [31:0] nt_branch_addr;
   pc_sel_e     pc_mux_id;                      // Mux selector for next PC
   exc_pc_sel_e exc_pc_mux_id;                  // Mux selector for exception PC
+  logic [$clog2(NUM_INTERRUPTS)-1:0] m_exc_vec_pc_mux_id; // Mux selector for vectored IRQ PC
   exc_cause_t  exc_cause;                      // Exception cause
+
+  logic [1:0]        trap_addr_mux;
 
   logic        instr_intg_err;
   logic        lsu_load_err;
@@ -284,6 +294,9 @@ module ibex_core import ibex_pkg::*; #(
   csr_num_e    csr_addr;
   logic [31:0] csr_rdata;
   logic [31:0] csr_wdata;
+  logic [23:0] csr_mtvec;
+  logic [23:0] csr_mtvt;
+  logic [1:0]  mtvec_mode;
   logic        illegal_csr_insn_id;    // CSR access to non-existent register,
                                        // with wrong priviledge level,
                                        // or missing write permissions
@@ -323,9 +336,14 @@ module ibex_core import ibex_pkg::*; #(
   logic [NUM_INTERRUPTS-1:4]         clic_irqs; // 0-15 reserved
   logic                              csr_mstatus_mie;
   logic [31:0]                       csr_mepc, csr_depc;
-  logic [31:0]                       mintstatus;
+  mintstatus_t                       mintstatus;
   logic [7:0]                        mintthresh;
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id;
+  logic                              m_irq_enable;
+  logic                              csr_irq_sec;
+  logic [31:0]                       mie_bypass;
+  logic [31:0]                       mip;
+  logic                              minhv;
 
   // PMP signals
   logic [33:0]  csr_pmp_addr [PMPNumRegions];
@@ -340,12 +358,21 @@ module ibex_core import ibex_pkg::*; #(
   logic        csr_restore_mret_id;
   logic        csr_restore_dret_id;
   logic        csr_save_cause;
+  logic [$clog2(NUM_INTERRUPTS):0]  csr_cause;
+  logic [7:0]  csr_irq_level;
+  logic        csr_mtvt_init;
+  logic        irq_ack;          // interrupt acknowledge signal sent by id_stage module
+  logic        irq_ack_mnxti;    // interrupt acknowledge signal sent by cs_register module (mnxti csr)
+  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant; // the interrupt id calculated by id_stage module is sent to cs_register module for mnxti operation
+  //logic        jalmnxti_ctrl;    // jump req signal sent by cs_register module for jalmnxti csr
+  //logic [31:0] jalmnxti_pc;      // jump target address sent by cs_register module for jalmnxti csr
   logic        csr_mtvec_init;
-  logic [31:0] csr_mtvec;
+  //logic [31:0] csr_mtvec;
   logic [31:0] csr_mtval;
   logic        csr_mstatus_tw;
   priv_lvl_e   priv_mode_id;
   priv_lvl_e   priv_mode_lsu;
+  priv_lvl_e   current_priv_lvl;
 
   // debug mode and dcsr configuration
   logic        debug_mode;
@@ -378,6 +405,9 @@ module ibex_core import ibex_pkg::*; #(
 
   // for RVFI
   logic        illegal_insn_id, unused_illegal_insn_id; // ID stage sees an illegal instruction
+
+  assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
+    ? exc_cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
 
   //////////////////////
   // Clock management //
@@ -430,6 +460,8 @@ module ibex_core import ibex_pkg::*; #(
     .RndCnstLfsrPerm  (RndCnstLfsrPerm),
     .BranchPredictor  (BranchPredictor),
     .MemECC           (MemECC),
+    .CLIC             (CLIC),
+    .CLIC_SHV         (CLIC_SHV),
     .MemDataWidth     (MemDataWidth)
   ) if_stage_i (
     .clk_i (clk_i),
@@ -437,6 +469,16 @@ module ibex_core import ibex_pkg::*; #(
 
     .boot_addr_i(boot_addr_i),
     .req_i      (instr_req_gated),  // instruction request control
+
+    //trap vector location
+    .m_trap_base_addr_i           (csr_mtvec),
+    .m_trap_base_addr_clic_shv_i  (csr_mtvt),
+
+    // selective hardware vectoring
+    .irq_shv_i           ( irq_shv_i         ),
+    .minhv_o             ( minhv             ),
+
+    .trap_addr_mux_i     ( trap_addr_mux     ),
 
     // instruction cache interface
     .instr_req_o       (instr_req_o),
@@ -492,6 +534,8 @@ module ibex_core import ibex_pkg::*; #(
     .icache_inval_i        (icache_inval),
     .icache_ecc_error_o    (icache_ecc_error),
 
+    .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux_id ),
+
     // branch targets
     .branch_target_ex_i(branch_target_ex),
     .nt_branch_addr_i  (nt_branch_addr),
@@ -501,6 +545,7 @@ module ibex_core import ibex_pkg::*; #(
     .csr_depc_i      (csr_depc),  // debug return address
     .csr_mtvec_i     (csr_mtvec),  // trap-vector base address
     .csr_mtvec_init_o(csr_mtvec_init),
+    .csr_mtvt_init_o (csr_mtvt_init),
 
     // pipeline stalls
     .id_in_ready_i(id_in_ready),
@@ -547,7 +592,8 @@ module ibex_core import ibex_pkg::*; #(
     .DataIndTiming  (DataIndTiming),
     .WritebackStage (WritebackStage),
     .BranchPredictor(BranchPredictor),
-    .MemECC         (MemECC)
+    .MemECC         (MemECC),
+    .CLIC           (CLIC)
   ) id_stage_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -575,11 +621,13 @@ module ibex_core import ibex_pkg::*; #(
     .instr_req_o           (instr_req_int),
     .pc_set_o              (pc_set),
     .pc_mux_o              (pc_mux_id),
+    .trap_addr_mux_o       ( trap_addr_mux        ),
     .nt_branch_mispredict_o(nt_branch_mispredict),
     .nt_branch_addr_o      (nt_branch_addr),
     .exc_pc_mux_o          (exc_pc_mux_id),
     .exc_cause_o           (exc_cause),
     .icache_inval_o        (icache_inval),
+
 
     .instr_fetch_err_i      (instr_fetch_err),
     .instr_fetch_err_plus2_i(instr_fetch_err_plus2),
@@ -627,6 +675,10 @@ module ibex_core import ibex_pkg::*; #(
     .csr_mstatus_tw_i     (csr_mstatus_tw),
     .illegal_csr_insn_i   (illegal_csr_insn_id),
     .data_ind_timing_i    (data_ind_timing),
+    .current_priv_lvl_i   ( current_priv_lvl     ),
+    //.csr_irq_sec_o        ( csr_irq_sec          ),
+    .csr_cause_o          ( csr_cause            ),
+    .csr_irq_level_o      ( csr_irq_level        ),
 
     // LSU
     .lsu_req_o     (lsu_req),  // to load store unit
@@ -650,7 +702,7 @@ module ibex_core import ibex_pkg::*; #(
     .irqs_i           ( ibex_irqs      ),
     .clic_irqs_i      ( clic_irqs      ),
     .irq_level_i      ( irq_level_i    ),
-    //.mie_bypass_i     ( mie_bypass ),
+    .mie_bypass_i     ( mie_bypass ),
     .mintthresh_i     ( mintthresh     ),
     .mintstatus_i     ( mintstatus     ),
     .irq_ack_o        ( irq_ack        ), // interrupt acknowledge signal sent by id_stage
@@ -658,6 +710,8 @@ module ibex_core import ibex_pkg::*; #(
     .irq_id_ctrl_o    ( irq_id_instant ), // irq_id_ctrl_o is sent to cs_register module for mnxti csr operation
     .irq_nm_i         ( irq_nm_i       ),
     .nmi_mode_o       ( nmi_mode       ),
+    .mip_o            ( mip            ),
+    .m_irq_enable_i   ( m_irq_enable   ),
 
     // Debug Signal
     .debug_mode_o         (debug_mode),
@@ -1037,7 +1091,10 @@ module ibex_core import ibex_pkg::*; #(
     .RV32E            (RV32E),
     .RV32M            (RV32M),
     .RV32B            (RV32B),
-    .NUM_INTERRUPTS   (NUM_INTERRUPTS)
+    .NUM_INTERRUPTS   (NUM_INTERRUPTS),
+    .CLIC             (CLIC),
+    .CLIC_SHV         (CLIC_SHV),
+    .MCLICBASE_ADDR   (MCLICBASE_ADDR)
   ) cs_registers_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -1046,11 +1103,18 @@ module ibex_core import ibex_pkg::*; #(
     .hart_id_i      (hart_id_i),
     .priv_mode_id_o (priv_mode_id),
     .priv_mode_lsu_o(priv_mode_lsu),
+    .boot_addr_i     (boot_addr_i),
 
     // mtvec
     .csr_mtvec_o     (csr_mtvec),
     .csr_mtvec_init_i(csr_mtvec_init),
-    .boot_addr_i     (boot_addr_i),
+    .csr_mtvt_o                 ( csr_mtvt         ),
+    .mtvec_mode_o               ( mtvec_mode       ),
+    // mtvec address
+    .mtvec_addr_i               ( mtvec_addr_i     ),
+    // mtvt address
+    .mtvt_addr_i                ( mtvt_addr_i      ),
+    .csr_mtvt_init_i            ( csr_mtvt_init    ),
 
     // Interface to CSRs     ( SRAM like                    )
     .csr_access_i(csr_access),
@@ -1061,14 +1125,14 @@ module ibex_core import ibex_pkg::*; #(
     .csr_rdata_o (csr_rdata),
 
     // Interrupt related control signals
-    .irq_i            (irq_i),
+    .irq_i            (irq_i), // onehot signal of input interrupt for mnxti csr operation
     .irq_level_i      (irq_level_i),
     .irq_shv_i        (irq_shv_i),
     .nmi_mode_i       (nmi_mode),
     .irq_priv_i       (irq_priv_i),
     .irq_pending_o    (irq_pending_o),
-    .irq_ack_mnxti_o  (),
-    .irq_id_instant_i (),
+    .irq_ack_mnxti_o  (irq_ack_mnxti),
+    .irq_id_instant_i (irq_id_instant),
     .ibex_irqs_o      (ibex_irqs),
     .clic_irqs_o      (clic_irqs),
     .mintstatus_o     (mintstatus),
@@ -1077,6 +1141,14 @@ module ibex_core import ibex_pkg::*; #(
     .csr_mstatus_tw_o (csr_mstatus_tw),
     .csr_mepc_o       (csr_mepc),
     .csr_mtval_o      (crash_dump_mtval),
+    .mie_bypass_o     (mie_bypass),
+    .mip_i            (mip),
+    .m_irq_enable_o             ( m_irq_enable           ),
+    //.jalmnxti_ctrl_o            ( jalmnxti_ctrl          ), // jump req signal sent by jalmnxti csr
+    //.jalmnxti_pc_o              ( jalmnxti_pc            ), // jump target address sent by jalmnxti csr
+
+    // Interrupts Selective Hardware Vectoring
+    .minhv_i                    ( minhv                  ),
 
     // PMP
     .csr_pmp_cfg_o    (csr_pmp_cfg),
@@ -1093,6 +1165,7 @@ module ibex_core import ibex_pkg::*; #(
     .debug_ebreakm_o      (debug_ebreakm),
     .debug_ebreaku_o      (debug_ebreaku),
     .trigger_match_o      (trigger_match),
+    .priv_lvl_o           (current_priv_lvl),
 
     .pc_if_i(pc_if),
     .pc_id_i(pc_id),
@@ -1113,6 +1186,7 @@ module ibex_core import ibex_pkg::*; #(
     .csr_restore_mret_i(csr_restore_mret_id),
     .csr_restore_dret_i(csr_restore_dret_id),
     .csr_save_cause_i  (csr_save_cause),
+    .csr_irq_level_i   (csr_irq_level),
     .csr_mcause_i      (exc_cause),
     .csr_mtval_i       (csr_mtval),
     .illegal_csr_insn_o(illegal_csr_insn_id),

@@ -31,12 +31,13 @@ module ibex_top import ibex_pkg::*; #(
   parameter int unsigned DbgHwBreakNum    = 1,
   parameter bit          SecureIbex       = 1'b0,
   parameter bit          ICacheScramble   = 1'b0,
-  parameter bit          CLIC             = 1'b0,
+  parameter bit          CLIC             = 1'b1,
   parameter int unsigned NUM_INTERRUPTS   = 64,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
   parameter int unsigned DmExceptionAddr  = 32'h1A110808,
+  parameter int unsigned MCLICBASE_ADDR   = 32'h00050000,
   // Default seed and nonce for scrambling
   parameter logic [SCRAMBLE_KEY_W-1:0]   RndCnstIbexKey   = RndCnstIbexKeyDefault,
   parameter logic [SCRAMBLE_NONCE_W-1:0] RndCnstIbexNonce = RndCnstIbexNonceDefault
@@ -75,11 +76,13 @@ module ibex_top import ibex_pkg::*; #(
   input  logic [6:0]                   data_rdata_intg_i,
   input  logic                         data_err_i,
 
-  // Interrupt inputs
+  // Interrupt interface
   input  logic [NUM_INTERRUPTS-1:0]    irq_i,
   input  logic [7:0]                   irq_level_i,
   input  logic                         irq_shv_i,
   input  logic [1:0]                   irq_priv_i,
+  output logic                         irq_ack_o,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
 
   // Scrambling Interface
   input  logic                         scramble_key_valid_i,
@@ -323,13 +326,16 @@ module ibex_top import ibex_pkg::*; #(
     .MemECC           (MemECC),
     .MemDataWidth     (MemDataWidth),
     .DmHaltAddr       (DmHaltAddr),
-    .DmExceptionAddr  (DmExceptionAddr)
+    .DmExceptionAddr  (DmExceptionAddr),
+    .MCLICBASE_ADDR   (MCLICBASE_ADDR)
   ) u_ibex_core (
     .clk_i(clk),
     .rst_ni,
 
     .hart_id_i,
     .boot_addr_i,
+    .mtvt_addr_i,
+    .mtvec_addr_i,
 
     .instr_req_o,
     .instr_gnt_i,
@@ -380,6 +386,8 @@ module ibex_top import ibex_pkg::*; #(
     .irq_level_i      (irq_level_i),
     .irq_shv_i        (irq_shv_i),
     .irq_priv_i       (irq_priv_i),
+    .irq_ack_o        (irq_ack_o),
+    .irq_id_o         (irq_id_o),
     .irq_pending_o    (irq_pending),
 
     .debug_req_i,

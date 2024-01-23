@@ -30,6 +30,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   parameter bit          MemECC            = 1'b0,
   parameter bit          CLIC              = 1'b1,
   parameter bit          CLIC_SHV          = 1'b1,
+  parameter int unsigned NUM_INTERRUPTS    = 64,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32
 ) (
   input  logic                         clk_i,
@@ -112,6 +113,8 @@ module ibex_if_stage import ibex_pkg::*; #(
 
   // jump and branch target
   input  logic [31:0]                 branch_target_ex_i,       // branch/jump target address
+
+  input  logic [1:0]                  trap_addr_mux_i,
 
   // CSRs
   input  logic [31:0]                 csr_mepc_i,               // PC to restore after handling
