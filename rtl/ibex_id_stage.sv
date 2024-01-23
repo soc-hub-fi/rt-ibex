@@ -130,7 +130,7 @@ module ibex_id_stage #(
   input  logic                      irq_pending_i,
   input  ibex_pkg::irqs_t           irqs_i,
   input  logic [NUM_INTERRUPTS-1:4] clic_irqs_i,
-  input  ibex_pkg::priv_lvl_e       current_priv_lvl_i,
+  input  logic [7:0]                current_priv_lvl_i,
   input  logic                      irq_nm_i,
   output logic                      nmi_mode_o,
   input  logic [7:0]                irq_level_i,
@@ -147,8 +147,8 @@ module ibex_id_stage #(
 
   output logic [1:0]                trap_addr_mux_o,
   output logic [$clog2(NUM_INTERRUPTS):0]  csr_cause_o,
-  input  logic                              mie_bypass_i,
-  output logic mip_o,
+  input  logic [31:0]               mie_bypass_i,
+  output logic [31:0]               mip_o,
   input  logic m_irq_enable_i,
 
   input  logic                      lsu_load_err_i,

@@ -294,8 +294,8 @@ module ibex_core import ibex_pkg::*; #(
   csr_num_e    csr_addr;
   logic [31:0] csr_rdata;
   logic [31:0] csr_wdata;
-  logic [23:0] csr_mtvec;
-  logic [23:0] csr_mtvt;
+  logic [31:0] csr_mtvec;
+  logic [31:0] csr_mtvt;
   logic [1:0]  mtvec_mode;
   logic        illegal_csr_insn_id;    // CSR access to non-existent register,
                                        // with wrong priviledge level,
@@ -372,7 +372,7 @@ module ibex_core import ibex_pkg::*; #(
   logic        csr_mstatus_tw;
   priv_lvl_e   priv_mode_id;
   priv_lvl_e   priv_mode_lsu;
-  priv_lvl_e   current_priv_lvl;
+  logic [7:0]  current_priv_lvl;
 
   // debug mode and dcsr configuration
   logic        debug_mode;
@@ -470,10 +470,6 @@ module ibex_core import ibex_pkg::*; #(
     .boot_addr_i(boot_addr_i),
     .req_i      (instr_req_gated),  // instruction request control
 
-    //trap vector location
-    .m_trap_base_addr_i           (csr_mtvec),
-    .m_trap_base_addr_clic_shv_i  (csr_mtvt),
-
     // selective hardware vectoring
     .irq_shv_i           ( irq_shv_i         ),
     .minhv_o             ( minhv             ),
@@ -546,6 +542,9 @@ module ibex_core import ibex_pkg::*; #(
     .csr_mtvec_i     (csr_mtvec),  // trap-vector base address
     .csr_mtvec_init_o(csr_mtvec_init),
     .csr_mtvt_init_o (csr_mtvt_init),
+
+    //trap vector location
+    .m_trap_base_addr_clic_shv_i  (csr_mtvt),
 
     // pipeline stalls
     .id_in_ready_i(id_in_ready),

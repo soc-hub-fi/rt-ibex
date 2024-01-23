@@ -52,8 +52,8 @@ module ibex_if_stage import ibex_pkg::*; #(
   // Interrupts Selective Hardware Vectoring
   input logic  irq_shv_i,
   output logic minhv_o,
-  input  logic [23:0] m_trap_base_addr_i,
-  input  logic [23:0] m_trap_base_addr_clic_shv_i,
+  input  logic [31:0] csr_mtvec_i,
+  input  logic [31:0] m_trap_base_addr_clic_shv_i,
   input  logic [$clog2(NUM_INTERRUPTS)-1:0] m_exc_vec_pc_mux_i,    // selects ISR address for vectorized interrupt lines
 
   // ICache RAM IO
@@ -121,7 +121,6 @@ module ibex_if_stage import ibex_pkg::*; #(
                                                                 // the interrupt/exception
   input  logic [31:0]                 csr_depc_i,               // PC to restore after handling
                                                                 // the debug request
-  input  logic [31:0]                 csr_mtvec_i,              // base PC to jump to on exception
   output logic                        csr_mtvec_init_o,         // tell CS regfile to init mtvec
   output logic                        csr_mtvt_init_o,       // tell CS regfile to init mtvt
 
