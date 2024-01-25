@@ -280,10 +280,10 @@ module ibex_cs_registers #(
   logic        dscratch0_en, dscratch1_en;
 
   // CLIC signals
-  logic [        NUM_INTERRUPTS-1:0] irq_q;
-  logic                              irq_level_q;
-  logic                              irq_shv_q;
-  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_q;
+  logic [        NUM_INTERRUPTS-1:0] irq_q, irq_d;
+  logic                              irq_level_q, irq_level_d;
+  logic                              irq_shv_q, irq_shv_d;
+  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_q, irq_id_instant_d;
   logic [                       7:0] mpil_q, mpil_d;
 
   // CSRs for recoverable NMIs
@@ -383,6 +383,10 @@ module ibex_cs_registers #(
 
   assign minhv_n = mcause_d.minhv;
   assign minhv_q = mcause_q.minhv;
+
+  assign irq_d       = irq_i;
+  assign irq_shv_d   = irq_shv_i;
+  assign irq_level_d = irq_level_i;
 
   // read logic
   always_comb begin
@@ -1332,14 +1336,14 @@ module ibex_cs_registers #(
 
   always_ff @(posedge clk_i or negedge rst_ni)
   begin : register_irq_inputs
-    if(rst_ni) begin
+    if(~rst_ni) begin
       irq_q       <= '0;
       irq_level_q <= '0;
       irq_shv_q   <= '0;
     end else begin
-      irq_q       <= irq_i;
-      irq_shv_q   <= irq_shv_i;
-      irq_level_q <= irq_level_i;
+      irq_q       <= irq_d;
+      irq_shv_q   <= irq_shv_d;
+      irq_level_q <= irq_level_d;
     end
   end
 
