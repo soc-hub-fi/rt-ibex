@@ -363,7 +363,7 @@ module ibex_core import ibex_pkg::*; #(
   logic [7:0]  csr_irq_level;
   logic        csr_mtvt_init;
   logic        irq_ack;          // interrupt acknowledge signal sent by id_stage module
-  logic        irq_ack_mnxti;    // interrupt acknowledge signal sent by cs_register module (mnxti csr)
+  //logic        irq_ack_mnxti;    // interrupt acknowledge signal sent by cs_register module (mnxti csr)
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant; // the interrupt id calculated by id_stage module is sent to cs_register module for mnxti operation
   //logic        jalmnxti_ctrl;    // jump req signal sent by cs_register module for jalmnxti csr
   //logic [31:0] jalmnxti_pc;      // jump target address sent by cs_register module for jalmnxti csr
@@ -1133,7 +1133,7 @@ module ibex_core import ibex_pkg::*; #(
     .nmi_mode_i       (nmi_mode),
     .irq_priv_i       (irq_priv_i),
     .irq_pending_o    (irq_pending_o),
-    .irq_ack_mnxti_o  (irq_ack_mnxti),
+    //.irq_ack_mnxti_o  (irq_ack_mnxti),
     .irq_id_instant_i (irq_id_instant),
     //.ibex_irqs_o      (ibex_irqs),
     //.clic_irqs_o      (clic_irqs),

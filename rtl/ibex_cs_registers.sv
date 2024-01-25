@@ -60,7 +60,7 @@ module ibex_cs_registers #(
   input  logic                              irq_shv_i,        // instant pending interrupt selective hardware vectoring for mnxti csr
   input  logic [NUM_INTERRUPTS-1:0]         irq_i,            // instant pending interrupt for mmnxti csr
   input  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_i, // instant pending interrupt id for mnxti csr (calculated in id_stage.sv)
-  output logic                              irq_ack_mnxti_o,
+  //output logic                              irq_ack_mnxti_o,
   output logic                              csr_mstatus_mie_o,
   input  logic [1:0]                        irq_priv_i,
   output logic                              irq_pending_o,
@@ -82,7 +82,7 @@ module ibex_cs_registers #(
   input  logic [31:0]                       mip_i,
   output logic                              m_irq_enable_o,
   input  logic                              minhv_i,
-  output logic [7:0]                        priv_lvl_o,
+  output ibex_pkg::priv_lvl_e               priv_lvl_o,
 
   // PMP
   output ibex_pkg::pmp_cfg_t     csr_pmp_cfg_o  [PMPNumRegions],
@@ -187,6 +187,9 @@ module ibex_cs_registers #(
 
   localparam MTVEC_MODE        = CLIC ? 2'b11 : 2'b01;
 
+  // Interrupt mask
+  localparam IRQ_MASK = {32{1'b1}};
+
   typedef struct packed {
     logic      mie;
     logic      mpie;
@@ -279,12 +282,14 @@ module ibex_cs_registers #(
   logic [31:0] dscratch1_q;
   logic        dscratch0_en, dscratch1_en;
 
+  logic [31:0] csr_mie_wdata;
+  logic        csr_mie_we;
+
   // CLIC signals
   logic [        NUM_INTERRUPTS-1:0] irq_q, irq_d;
   logic                              irq_level_q, irq_level_d;
   logic                              irq_shv_q, irq_shv_d;
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_q, irq_id_instant_d;
-  logic [                       7:0] mpil_q, mpil_d;
 
   // CSRs for recoverable NMIs
   // NOTE: these CSRS are nonstandard, see https://github.com/riscv/riscv-isa-manual/issues/261
@@ -352,7 +357,7 @@ module ibex_cs_registers #(
 
   logic mnxti_pass;
   assign mnxti_pass = (irq_q) && CLIC &&
-            (irq_level_q > ((mpil_q > mintthresh_q) ? mpil_q : mintthresh_q)) &&
+            (irq_level_q > ((mcause_q.mpil > mintthresh_q) ? mcause_q.mpil : mintthresh_q)) &&
             ((~CLIC_SHV) || (~irq_shv_q));
 
   assign unused_boot_addr = boot_addr_i[7:0];
@@ -387,6 +392,30 @@ module ibex_cs_registers #(
   assign irq_d       = irq_i;
   assign irq_shv_d   = irq_shv_i;
   assign irq_level_d = irq_level_i;
+
+  assign m_irq_enable_o = mstatus_q.mie && !(dcsr_q.step && !dcsr_q.stepie);
+  assign mie_bypass_o = ((csr_addr_i == CSR_MIE) && csr_mie_we) ? csr_mie_wdata & IRQ_MASK : mie_q;
+  assign mintthresh_o = mintthresh_q;
+  assign priv_lvl_o   = priv_lvl_q;
+  assign irq_id_instant_d = irq_id_instant_i;
+
+
+  // MIE CSR operation logic
+  always_comb
+  begin
+    csr_mie_wdata = csr_wdata_i;
+    csr_mie_we    = 1'b1;
+
+    case (csr_op_i)
+      CSR_OP_WRITE: csr_mie_wdata = CLIC ? {32'b0} : csr_wdata_i;
+      CSR_OP_SET:   csr_mie_wdata = CLIC ? {32'b0} : csr_wdata_i | mie_q;
+      CSR_OP_CLEAR: csr_mie_wdata = CLIC ? {32'b0} : (~csr_wdata_i) & mie_q;
+      CSR_OP_READ: begin
+        csr_mie_wdata = CLIC ? {32'b0} : csr_wdata_i;
+        csr_mie_we    = 1'b0;
+      end
+    endcase
+  end
 
   // read logic
   always_comb begin
@@ -1340,10 +1369,12 @@ module ibex_cs_registers #(
       irq_q       <= '0;
       irq_level_q <= '0;
       irq_shv_q   <= '0;
+      irq_id_instant_q <= '0;
     end else begin
       irq_q       <= irq_d;
       irq_shv_q   <= irq_shv_d;
       irq_level_q <= irq_level_d;
+      irq_id_instant_q <= irq_id_instant_d;
     end
   end
 
