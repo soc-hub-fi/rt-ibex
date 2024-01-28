@@ -101,6 +101,7 @@ module ibex_id_stage #(
   output logic                      csr_save_if_o,
   output logic                      csr_save_id_o,
   output logic                      csr_save_wb_o,
+  output logic [$clog2(NUM_INTERRUPTS):0]  csr_cause_o,
   output logic                      csr_restore_mret_id_o,
   output logic                      csr_restore_dret_id_o,
   output logic                      csr_save_cause_o,
@@ -128,9 +129,9 @@ module ibex_id_stage #(
   // Interrupt signals
   input  logic                      csr_mstatus_mie_i,
   input  logic                      irq_pending_i,
-  input  ibex_pkg::irqs_t           irqs_i,
+  input  ibex_pkg::irqs_t           ibex_irqs_i,
   input  logic [NUM_INTERRUPTS-1:4] clic_irqs_i,
-  input  logic [7:0]                current_priv_lvl_i,
+  input  ibex_pkg::priv_lvl_e       current_priv_lvl_i,
   input  logic                      irq_nm_i,
   output logic                      nmi_mode_o,
   input  logic [7:0]                irq_level_i,
@@ -146,7 +147,7 @@ module ibex_id_stage #(
   output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl_o, // send interrupt id to cs_register module for mnxti csr operation
 
   output logic [1:0]                trap_addr_mux_o,
-  output logic [$clog2(NUM_INTERRUPTS):0]  csr_cause_o,
+
   input  logic [31:0]               mie_bypass_i,
   output logic [31:0]               mip_o,
   input  logic m_irq_enable_i,
@@ -223,6 +224,8 @@ module ibex_id_stage #(
 
   logic        wb_exception;
   logic        id_exception;
+
+  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl;
 
   logic        branch_in_dec;
   logic        branch_set, branch_set_raw, branch_set_raw_d;
@@ -633,19 +636,23 @@ module ibex_id_stage #(
     // interrupt signals
     .csr_mstatus_mie_i(csr_mstatus_mie_i),
     .irq_pending_i    (irq_pending_i),
-    .irqs_i           (irqs_i),
+    .ibex_irqs_i      (ibex_irqs_i),
+    .clic_irqs_i      (clic_irqs_i),
     .irq_nm_ext_i     (irq_nm_i),
     .nmi_mode_o       (nmi_mode_o),
+    .irq_id_ctrl_i    (irq_id_ctrl_i),
 
     // CSR Controller Signals
     .csr_save_if_o        (csr_save_if_o),
     .csr_save_id_o        (csr_save_id_o),
     .csr_save_wb_o        (csr_save_wb_o),
+    .csr_cause_o          (csr_cause_o),
     .csr_restore_mret_id_o(csr_restore_mret_id_o),
     .csr_restore_dret_id_o(csr_restore_dret_id_o),
     .csr_save_cause_o     (csr_save_cause_o),
     .csr_mtval_o          (csr_mtval_o),
     .priv_mode_i          (priv_mode_i),
+    .csr_irq_level_o      (csr_irq_level_o),
 
     // Debug Signal
     .debug_mode_o         (debug_mode_o),
@@ -667,6 +674,74 @@ module ibex_id_stage #(
     .perf_jump_o   (perf_jump_o),
     .perf_tbranch_o(perf_tbranch_o)
   );
+
+
+  generate
+    if (CLIC) begin : gen_int_controller
+  
+      ibex_pkg::irqs_t           ibex_irqs_q;
+      logic [NUM_INTERRUPTS-1:4] clic_irqs_q;
+      //logic        irq_sec_q;
+      logic [7:0]  irq_level;
+  
+      // register all interrupt inputs
+      always_ff @(posedge clk_i, negedge rst_ni) begin
+        if (~rst_ni) begin
+          ibex_irqs_q <= '0;
+          clic_irqs_q <= '0;
+          //irq_sec_q   <= 1'b0;
+          irq_level   <= '0;
+        end else begin
+          ibex_irqs_q <= ibex_irqs_i;
+          clic_irqs_q <= clic_irqs_i;
+          //irq_sec_q   <= irq_sec_i;
+          irq_level   <= irq_level_i;
+        end
+      end
+  
+      // In clic mode irq_i is one hot encoded (due to how clic is the only source
+      // requesting interrupts). Turn this back into an integer.
+      // TODO: probably better that we turn the irq_i signal back into an integer
+      // how it used to be for clic mode
+      localparam int unsigned IRQ_ID_WIDTH = $clog2(NUM_INTERRUPTS); //bin width
+  
+      for (genvar j = 0; j < IRQ_ID_WIDTH; j++) begin : jl
+        logic [NUM_INTERRUPTS-1:0] tmp_mask;
+        for (genvar i = 0; i < NUM_INTERRUPTS; i++) begin : il
+          logic [IRQ_ID_WIDTH-1:0] tmp_i;
+          assign tmp_i = i;
+          assign tmp_mask[i] = tmp_i[j];
+        end
+        assign irq_id_ctrl[j] = |(tmp_mask & {clic_irqs_q, ibex_irqs_q});
+      end
+      // pragma translate_off
+  `ifndef VERILATOR
+      assert final ($onehot0({clic_irqs_q, ibex_irqs_q})) else
+        $fatal(1, "[rt-ibex] More than two bit set in irq_i (one-hot)");
+  `endif
+      // pragma translate_on
+  
+      // Check if the interrupt level of the current interrupt exceeds the current
+      // irq threshold and global interrupt are enabled (otherwise it wont' fire).
+      // The effective interrupt threshold is the maximum of mintstatus.mil and
+      // mintthresh.
+      logic [7:0] max_thresh;
+  
+      assign max_thresh = mintthresh_i > mintstatus_i.mil ? mintthresh_i : mintstatus_i.mil;
+      assign irq_req_ctrl = (irq_level > max_thresh) && (|{clic_irqs_q, ibex_irqs_q}) && m_irq_enable_i;
+      assign irq_level_ctrl = irq_level;
+  
+      // tied to zero in CLIC mode
+      assign mip_o = '0;
+  
+      assign irq_sec_ctrl = 1'b0;
+  
+      // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
+      assign irq_wu_ctrl = |({clic_irqs_q, ibex_irqs_q});
+  
+    end
+  endgenerate
+
 
   assign multdiv_en_dec   = mult_en_dec | div_en_dec;
 

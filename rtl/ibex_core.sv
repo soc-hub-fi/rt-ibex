@@ -373,7 +373,7 @@ module ibex_core import ibex_pkg::*; #(
   logic        csr_mstatus_tw;
   priv_lvl_e   priv_mode_id;
   priv_lvl_e   priv_mode_lsu;
-  logic [7:0]  current_priv_lvl;
+  priv_lvl_e  current_priv_lvl;
 
   // debug mode and dcsr configuration
   logic        debug_mode;
@@ -701,7 +701,7 @@ module ibex_core import ibex_pkg::*; #(
     // Interrupt Signals
     .csr_mstatus_mie_i( csr_mstatus_mie),
     .irq_pending_i    ( irq_pending_o  ),
-    .irqs_i           ( ibex_irqs      ),
+    .ibex_irqs_i      ( ibex_irqs      ),
     .clic_irqs_i      ( clic_irqs      ),
     .irq_level_i      ( irq_level_i    ),
     .mie_bypass_i     ( mie_bypass ),

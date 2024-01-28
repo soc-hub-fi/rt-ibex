@@ -13,7 +13,8 @@
 module ibex_controller #(
   parameter bit WritebackStage  = 1'b0,
   parameter bit BranchPredictor = 1'b0,
-  parameter bit MemECC          = 1'b0
+  parameter bit MemECC          = 1'b0,
+  parameter int unsigned NUM_INTERRUPTS = 64
  ) (
   input  logic                  clk_i,
   input  logic                  rst_ni,
@@ -74,10 +75,18 @@ module ibex_controller #(
   // interrupt signals
   input  logic                  csr_mstatus_mie_i,       // M-mode interrupt enable bit
   input  logic                  irq_pending_i,           // interrupt request pending
-  input  ibex_pkg::irqs_t       irqs_i,                  // interrupt requests qualified with
+  input  ibex_pkg::irqs_t       ibex_irqs_i,                  // interrupt requests qualified with
                                                          // mie CSR
+  input  logic [NUM_INTERRUPTS-1:4] clic_irqs_i,
   input  logic                  irq_nm_ext_i,            // non-maskeable interrupt
   output logic                  nmi_mode_o,              // core executing NMI handler
+  output logic [7:0]            csr_irq_level_o,
+  input  logic [7:0]            irq_level_ctrl_i,
+  output logic                  irq_ack_o,
+  output logic [7:0]            irq_id_o,
+  input  logic [7:0]            irq_id_ctrl_i,
+
+  output logic                  trap_addr_mux_o,
 
   // debug signals
   input  logic                  debug_req_i,
@@ -93,6 +102,7 @@ module ibex_controller #(
   output logic                  csr_save_if_o,
   output logic                  csr_save_id_o,
   output logic                  csr_save_wb_o,
+  output logic [$clog2(NUM_INTERRUPTS):0] csr_cause_o,
   output logic                  csr_restore_mret_id_o,
   output logic                  csr_restore_dret_id_o,
   output logic                  csr_save_cause_o,
@@ -424,7 +434,7 @@ module ibex_controller #(
   //  end
   //end
 
-  assign unused_irq_timer = irqs_i.irq_timer;
+  assign unused_irq_timer = ibex_irqs_i.irq_timer;
 
   // Record the debug cause outside of the FSM
   // The decision to enter debug_mode and the write of the cause to DCSR happen
@@ -461,6 +471,7 @@ module ibex_controller #(
     csr_restore_dret_id_o = 1'b0;
     csr_save_cause_o      = 1'b0;
     csr_mtval_o           = '0;
+    csr_irq_level_o       = '0;
 
     // The values of pc_mux and exc_pc_mux are only relevant if pc_set is set. Some of the states
     // below always set pc_mux and exc_pc_mux but only set pc_set if certain conditions are met.
@@ -547,6 +558,15 @@ module ibex_controller #(
           // (since it might have outstanding loads or stores).
           ctrl_fsm_ns = IRQ_TAKEN;
           halt_if     = 1'b1;
+
+          // IRQ interface
+          irq_ack_o         = 1'b1;
+          irq_id_o          = irq_id_ctrl_i;
+          trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? 2'b01 : 2'b00;   //TRAP_USER : TRAP_MACHINE
+          csr_save_cause_o  = 1'b1;
+          csr_cause_o       = {1'b1,irq_id_ctrl_i};
+          csr_irq_level_o   = irq_level_ctrl_i;
+          csr_save_if_o     = 1'b1;
         end
 
         // enter debug mode
@@ -629,6 +649,14 @@ module ibex_controller #(
             // instruction to complete (since it might have outstanding loads
             // or stores).
             halt_if     = 1'b1;
+            // IRQ interface
+            irq_ack_o         = 1'b1;
+            irq_id_o          = irq_id_ctrl_i;
+            trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? 2'b01 : 2'b00;   //TRAP_USER : TRAP_MACHINE
+            csr_save_cause_o  = 1'b1;
+            csr_cause_o       = {1'b1,irq_id_ctrl_i};
+            csr_irq_level_o   = irq_level_ctrl_i;
+            csr_save_if_o     = 1'b1;
           end
         end
 
@@ -664,9 +692,9 @@ module ibex_controller #(
           //    '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};
 //
           end 
-          else if (irqs_i.irq_external) begin
+          else if (ibex_irqs_i.irq_external) begin
             exc_cause_o = ExcCauseIrqExternalM;
-          end else if (irqs_i.irq_software) begin
+          end else if (ibex_irqs_i.irq_software) begin
             exc_cause_o = ExcCauseIrqSoftwareM;
           end else begin // irqs_i.irq_timer
             exc_cause_o = ExcCauseIrqTimerM;
