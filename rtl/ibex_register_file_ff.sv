@@ -226,8 +226,13 @@ module ibex_register_file_ff #(
       .out_o (rdata_b_o)
     );
   end else begin : gen_no_rdata_mux_check
-    assign rdata_a_o = rf_reg[raddr_a_i];
-    assign rdata_b_o = rf_reg[raddr_b_i];
+    if (RV32E) begin : rv32e_regfile
+      assign rdata_a_o = rf_reg[raddr_a_i[3:0]];
+      assign rdata_b_o = rf_reg[raddr_b_i[3:0]];
+    end else begin : rv32i_regfile
+      assign rdata_a_o = rf_reg[raddr_a_i];
+      assign rdata_b_o = rf_reg[raddr_b_i];
+    end
     assign oh_raddr_a_err = 1'b0;
     assign oh_raddr_b_err = 1'b0;
   end
