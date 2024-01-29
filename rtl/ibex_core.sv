@@ -340,7 +340,7 @@ module ibex_core import ibex_pkg::*; #(
   logic [7:0]                        mintthresh;
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id;
   logic                              m_irq_enable;
-  logic                              csr_irq_sec;
+  //logic                              csr_irq_sec;
   logic [31:0]                       mie_bypass;
   logic [31:0]                       mip;
   logic                              minhv;
@@ -415,6 +415,9 @@ module ibex_core import ibex_pkg::*; #(
   assign ibex_irqs.irq_external = irq_i[11];
   assign ibex_irqs.irq_timer    = irq_i[7];
   assign clic_irqs              = irq_i[NUM_INTERRUPTS-1:16];
+
+  assign irq_ack_o              = irq_ack;
+  assign irq_id_o               = irq_id;
 
   //////////////////////
   // Clock management //

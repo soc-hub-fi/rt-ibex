@@ -406,6 +406,9 @@ package ibex_pkg;
   parameter int unsigned PMP_I2 = 1;
   parameter int unsigned PMP_D  = 2;
 
+  parameter TRAP_MACHINE = 2'b00;
+  parameter TRAP_USER    = 2'b01;
+
   typedef enum logic [1:0] {
     PMP_ACC_EXEC    = 2'b00,
     PMP_ACC_WRITE   = 2'b01,

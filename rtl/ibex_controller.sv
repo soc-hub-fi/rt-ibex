@@ -484,7 +484,11 @@ module ibex_controller #(
 
     exc_pc_mux_o           = EXC_PC_IRQ;
     exc_cause_o            = ExcCauseInsnAddrMisa; // = 6'h00
+    trap_addr_mux_o        = TRAP_MACHINE;
 
+    irq_ack_o              = 1'b0;
+    irq_id_o               = '0;
+    
     ctrl_fsm_ns            = ctrl_fsm_cs;
 
     ctrl_busy_o            = 1'b1;
@@ -563,7 +567,7 @@ module ibex_controller #(
           // IRQ interface
           irq_ack_o         = 1'b1;
           irq_id_o          = irq_id_ctrl_i;
-          trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? 2'b01 : 2'b00;   //TRAP_USER : TRAP_MACHINE
+          trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
           csr_save_cause_o  = 1'b1;
           csr_cause_o       = {1'b1,irq_id_ctrl_i};
           csr_irq_level_o   = irq_level_ctrl_i;
@@ -653,7 +657,7 @@ module ibex_controller #(
             // IRQ interface
             irq_ack_o         = 1'b1;
             irq_id_o          = irq_id_ctrl_i;
-            trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? 2'b01 : 2'b00;   //TRAP_USER : TRAP_MACHINE
+            trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
             csr_save_cause_o  = 1'b1;
             csr_cause_o       = {1'b1,irq_id_ctrl_i};
             csr_irq_level_o   = irq_level_ctrl_i;
@@ -762,6 +766,7 @@ module ibex_controller #(
         halt_if     = 1'b1;
         flush_id    = 1'b1;
         ctrl_fsm_ns = DECODE;
+        trap_addr_mux_o = TRAP_MACHINE;
 
         // As pc_mux and exc_pc_mux can take various values in this state they aren't set early
         // here.
