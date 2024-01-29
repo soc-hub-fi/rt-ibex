@@ -333,7 +333,7 @@ module ibex_core import ibex_pkg::*; #(
   // Interrupts
   logic                              nmi_mode;
   irqs_t                             ibex_irqs;
-  logic [NUM_INTERRUPTS-1:4]         clic_irqs; // 0-15 reserved
+  logic [NUM_INTERRUPTS-1:16]        clic_irqs; // 0-15 reserved
   logic                              csr_mstatus_mie;
   logic [31:0]                       csr_mepc, csr_depc;
   mintstatus_t                       mintstatus;
@@ -359,7 +359,7 @@ module ibex_core import ibex_pkg::*; #(
   logic        csr_restore_mret_id;
   logic        csr_restore_dret_id;
   logic        csr_save_cause;
-  logic [$clog2(NUM_INTERRUPTS):0]  csr_cause;
+  logic [$clog2(NUM_INTERRUPTS)-1:0]  csr_cause;
   logic [7:0]  csr_irq_level;
   logic        csr_mtvt_init;
   logic        irq_ack;          // interrupt acknowledge signal sent by id_stage module
@@ -410,7 +410,11 @@ module ibex_core import ibex_pkg::*; #(
   assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
     ? exc_cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
 
-  assign irq_nm = irq_i[31];
+  assign irq_nm                 = irq_i[31];
+  assign ibex_irqs.irq_software = irq_i[3];
+  assign ibex_irqs.irq_external = irq_i[11];
+  assign ibex_irqs.irq_timer    = irq_i[7];
+  assign clic_irqs              = irq_i[NUM_INTERRUPTS-1:16];
 
   //////////////////////
   // Clock management //

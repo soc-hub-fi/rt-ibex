@@ -77,16 +77,16 @@ module ibex_controller #(
   input  logic                  irq_pending_i,           // interrupt request pending
   input  ibex_pkg::irqs_t       ibex_irqs_i,                  // interrupt requests qualified with
                                                          // mie CSR
-  input  logic [NUM_INTERRUPTS-1:4] clic_irqs_i,
+  input  logic [NUM_INTERRUPTS-1:16] clic_irqs_i,
   input  logic                  irq_nm_ext_i,            // non-maskeable interrupt
   output logic                  nmi_mode_o,              // core executing NMI handler
   output logic [7:0]            csr_irq_level_o,
   input  logic [7:0]            irq_level_ctrl_i,
   output logic                  irq_ack_o,
-  output logic [7:0]            irq_id_o,
-  input  logic [7:0]            irq_id_ctrl_i,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
+  input  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl_i,
 
-  output logic                  trap_addr_mux_o,
+  output logic [1:0]            trap_addr_mux_o,
 
   // debug signals
   input  logic                  debug_req_i,
@@ -102,7 +102,7 @@ module ibex_controller #(
   output logic                  csr_save_if_o,
   output logic                  csr_save_id_o,
   output logic                  csr_save_wb_o,
-  output logic [$clog2(NUM_INTERRUPTS):0] csr_cause_o,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0] csr_cause_o,
   output logic                  csr_restore_mret_id_o,
   output logic                  csr_restore_dret_id_o,
   output logic                  csr_save_cause_o,
@@ -472,6 +472,7 @@ module ibex_controller #(
     csr_save_cause_o      = 1'b0;
     csr_mtval_o           = '0;
     csr_irq_level_o       = '0;
+    csr_cause_o           = '0;
 
     // The values of pc_mux and exc_pc_mux are only relevant if pc_set is set. Some of the states
     // below always set pc_mux and exc_pc_mux but only set pc_set if certain conditions are met.

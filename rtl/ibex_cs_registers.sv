@@ -364,6 +364,7 @@ module ibex_cs_registers #(
   
   assign mtvec_mode_o = MTVEC_MODE; // TODO: add support for vectored and CLIC mtvec mode
   assign csr_mtvt_o   = mtvt_q;
+  assign mintstatus_o = mintstatus_q;
 
   /////////////
   // CSR reg //
@@ -1360,6 +1361,20 @@ module ibex_cs_registers #(
     .wr_data_i (mscratchswl_d),
     .wr_en_i   (mscratchswl_en),
     .rd_data_o (mscratchswl_q),
+    .rd_error_o()
+  );
+
+  //MCLICBASE
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(1'b0),
+    .ResetValue('0)
+  ) u_mclicbase (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (mclicbase_d),
+    .wr_en_i   (mclicbase_en),
+    .rd_data_o (mclicbase_q),
     .rd_error_o()
   );
 
