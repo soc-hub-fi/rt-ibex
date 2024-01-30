@@ -488,12 +488,14 @@ module ibex_cs_registers #(
       // mcause: exception cause
       CSR_MCAUSE: 
         if (CLIC) begin
-          csr_rdata_int = { mcause_q.irq_ext | mcause_q.irq_int,
+          csr_rdata_int = { mcause_q.irq,
                             mcause_q.minhv,
                             mstatus_q.mpp[1:0],
                             mstatus_q.mpie,
+                            3'h0,
                             mcause_q.mpil[7:0],
-                            mcause_q.lower_cause[4:0]};
+                            4'h0,
+                            mcause_q.cause[11:0]};
         end else
           $fatal("Non-CLIC mode currently not supported on this implementation.");
           //csr_rdata_int = {mcause_q.irq_ext | mcause_q.irq_int,
@@ -798,13 +800,14 @@ module ibex_cs_registers #(
         CSR_MCAUSE: begin
           mcause_en = 1'b1;
           if (CLIC) begin 
-            mcause_d = '{ irq_ext     : csr_wdata_int[31] == 1'b0,
-                          irq_int     : csr_wdata_int[31] == 1'b1,
+            mcause_d = '{ irq         : csr_wdata_int[31],
                           minhv       : csr_wdata_int[30],
                           mpp         : csr_wdata_int[29:28],
                           mpie        : csr_wdata_int[27],
+                          // 26:24 reserved
                           mpil        : csr_wdata_int[23:16],
-                          lower_cause : csr_wdata_int[4:0]};
+                          // 15:12 reserved
+                          cause       : csr_wdata_int[11:0]};
           end else
             $fatal("Non-CLIC mode currently not supported on this implementation.");
             //mcause_d = '{irq_ext : csr_wdata_int[31:30] == 2'b10,
@@ -946,7 +949,7 @@ module ibex_cs_registers #(
           // save previous status for recoverable NMI
           mstack_en      = 1'b1;
 
-          if (!(mcause_d.irq_ext || mcause_d.irq_int)) begin
+          if (!(mcause_d.irq)) begin
             // SEC_CM: EXCEPTION.CTRL_FLOW.LOCAL_ESC
             // SEC_CM: EXCEPTION.CTRL_FLOW.GLOBAL_ESC
             cpuctrlsts_part_we = 1'b1;

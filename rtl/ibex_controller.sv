@@ -681,7 +681,7 @@ module ibex_controller #(
           if (irq_nm && !nmi_mode_q) begin
             exc_cause_o =
               irq_nm_ext_i ? ExcCauseIrqNm :
-                             '{irq_ext: 1'b0, irq_int: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: irq_nm_int_cause};
+                             '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: irq_nm_int_cause};
 
             if (irq_nm_int & !irq_nm_ext_i) begin
               csr_mtval_o = irq_nm_int_mtval;

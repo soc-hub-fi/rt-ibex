@@ -191,15 +191,15 @@ module ibex_if_stage import ibex_pkg::*; #(
   assign unused_boot_addr = boot_addr_i[7:0];
   assign unused_csr_mtvec = csr_mtvec_i[7:0];
 
-  assign unused_exc_cause = |{exc_cause.irq_ext, exc_cause.irq_int};
+  assign unused_exc_cause = |{exc_cause.irq};
 
   // exception PC selection mux
   always_comb begin : exc_pc_mux
-    irq_vec = exc_cause.lower_cause;
+    irq_vec = exc_cause.cause;
 
-    if (exc_cause.irq_int) begin
+    if (exc_cause.irq) begin
       // All internal interrupts go to the NMI vector
-      irq_vec = ExcCauseIrqNm.lower_cause;
+      irq_vec = ExcCauseIrqNm.cause;
     end
 
     unique case (exc_pc_mux_i)
