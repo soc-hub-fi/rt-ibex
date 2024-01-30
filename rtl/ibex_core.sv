@@ -1407,7 +1407,7 @@ module ibex_core import ibex_pkg::*; #(
     rvfi_ext_mip[CSR_MSIX_BIT]                       = rvfi_ext_stage_mip[RVFI_STAGES].irq_software;
     rvfi_ext_mip[CSR_MTIX_BIT]                       = rvfi_ext_stage_mip[RVFI_STAGES].irq_timer;
     rvfi_ext_mip[CSR_MEIX_BIT]                       = rvfi_ext_stage_mip[RVFI_STAGES].irq_external;
-    rvfi_ext_mip[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = rvfi_ext_stage_mip[RVFI_STAGES].irq_fast;
+    //rvfi_ext_mip[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = rvfi_ext_stage_mip[RVFI_STAGES].irq_fast;
   end
 
   assign rvfi_ext_nmi              = rvfi_ext_stage_nmi              [RVFI_STAGES];
@@ -1504,7 +1504,7 @@ module ibex_core import ibex_pkg::*; #(
   // altering the names or meanings of these signals or this comment please adjust the documentation
   // appropriately.
   assign new_debug_req = (debug_req_i & ~debug_mode);
-  assign new_nmi = irq_nm_i & ~nmi_mode & ~debug_mode;
+  assign new_nmi = irq_nm & ~nmi_mode & ~debug_mode;
   assign new_nmi_int = id_stage_i.controller_i.irq_nm_int & ~nmi_mode & ~debug_mode;
   assign new_irq = irq_pending_o & (csr_mstatus_mie || (priv_mode_id == PRIV_LVL_U)) & ~nmi_mode &
                    ~debug_mode;
@@ -1529,7 +1529,7 @@ module ibex_core import ibex_pkg::*; #(
            (new_debug_req & ~captured_debug_req) |
            (new_nmi & ~captured_nmi & ~captured_debug_req))) begin
         captured_valid     <= 1'b1;
-        captured_nmi       <= irq_nm_i;
+        captured_nmi       <= irq_nm;
         captured_nmi_int   <= id_stage_i.controller_i.irq_nm_int;
         captured_mip       <= cs_registers_i.mip;
         captured_debug_req <= debug_req_i;
@@ -1569,7 +1569,7 @@ module ibex_core import ibex_pkg::*; #(
     end else if ((if_stage_i.instr_valid_id_d & if_stage_i.instr_new_id_d) | rvfi_irq_valid) begin
       rvfi_ext_stage_mip[0]       <= instr_valid_id | ~captured_valid ? cs_registers_i.mip :
                                                                         captured_mip;
-      rvfi_ext_stage_nmi[0]       <= instr_valid_id | ~captured_valid ? irq_nm_i :
+      rvfi_ext_stage_nmi[0]       <= instr_valid_id | ~captured_valid ? irq_nm :
                                                                         captured_nmi;
       rvfi_ext_stage_nmi_int[0]   <=
         instr_valid_id | ~captured_valid ? id_stage_i.controller_i.irq_nm_int :

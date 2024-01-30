@@ -25,6 +25,8 @@ module ibex_top_tracing import ibex_pkg::*; #(
   parameter int unsigned DbgHwBreakNum    = 1,
   parameter bit          SecureIbex       = 1'b0,
   parameter bit          ICacheScramble   = 1'b0,
+  parameter bit          CLIC             = 1'b0,
+  parameter int unsigned NUM_INTERRUPTS   = 64,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
@@ -41,6 +43,8 @@ module ibex_top_tracing import ibex_pkg::*; #(
 
   input  logic [31:0]                  hart_id_i,
   input  logic [31:0]                  boot_addr_i,
+  input  logic [31:0]                  mtvec_addr_i,
+  input  logic [31:0]                  mtvt_addr_i,
 
   // Instruction memory interface
   output logic                         instr_req_o,
@@ -65,11 +69,17 @@ module ibex_top_tracing import ibex_pkg::*; #(
   input  logic                         data_err_i,
 
   // Interrupt inputs
-  input  logic                         irq_software_i,
-  input  logic                         irq_timer_i,
-  input  logic                         irq_external_i,
-  input  logic [14:0]                  irq_fast_i,
-  input  logic                         irq_nm_i,       // non-maskeable interrupt
+  //input  logic                         irq_software_i,
+  //input  logic                         irq_timer_i,
+  //input  logic                         irq_external_i,
+  //input  logic [14:0]                  irq_fast_i,
+  //input  logic                         irq_nm_i,       // non-maskeable interrupt
+  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
+  output logic                         irq_ack_o,
+  input  logic [7:0]                   irq_level_i,
+  input  logic                         irq_shv_i,
+  input  logic [1:0]                   irq_priv_i,
 
   // Scrambling Interface
   input  logic                         scramble_key_valid_i,
@@ -182,7 +192,9 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .RndCnstLfsrSeed  ( RndCnstLfsrSeed  ),
     .RndCnstLfsrPerm  ( RndCnstLfsrPerm  ),
     .DmHaltAddr       ( DmHaltAddr       ),
-    .DmExceptionAddr  ( DmExceptionAddr  )
+    .DmExceptionAddr  ( DmExceptionAddr  ),
+    .CLIC             ( CLIC             ),
+    .NUM_INTERRUPTS   ( NUM_INTERRUPTS   )
   ) u_ibex_top (
     .clk_i,
     .rst_ni,
@@ -193,6 +205,8 @@ module ibex_top_tracing import ibex_pkg::*; #(
 
     .hart_id_i,
     .boot_addr_i,
+    .mtvec_addr_i,
+    .mtvt_addr_i,
 
     .instr_req_o,
     .instr_gnt_i,
@@ -214,11 +228,17 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .data_rdata_intg_i,
     .data_err_i,
 
-    .irq_software_i,
-    .irq_timer_i,
-    .irq_external_i,
-    .irq_fast_i,
-    .irq_nm_i,
+    //.irq_software_i,
+    //.irq_timer_i,
+    //.irq_external_i,
+    //.irq_fast_i,
+    //.irq_nm_i,
+    .irq_i,
+    .irq_id_o,
+    .irq_ack_o,
+    .irq_level_i,
+    .irq_priv_i,
+    .irq_shv_i,
 
     .scramble_key_valid_i,
     .scramble_key_i,
