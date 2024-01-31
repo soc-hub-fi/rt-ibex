@@ -54,8 +54,8 @@ module ibex_core import ibex_pkg::*; #(
 
   input  logic [31:0]                  hart_id_i,
   input  logic [31:0]                  boot_addr_i,
-  input  logic [31:0]                  mtvec_addr_i,
-  input  logic [31:0]                  mtvt_addr_i,
+  //input  logic [31:0]                  mtvec_addr_i,
+  //input  logic [31:0]                  mtvt_addr_i,
 
   // Instruction memory interface
   output logic                         instr_req_o,
@@ -1118,11 +1118,11 @@ module ibex_core import ibex_pkg::*; #(
     .csr_mtvec_o     (csr_mtvec),
     .csr_mtvec_init_i(csr_mtvec_init),
     .csr_mtvt_o                 ( csr_mtvt         ),
-    .mtvec_mode_o               ( mtvec_mode       ),
-    // mtvec address
-    .mtvec_addr_i               ( mtvec_addr_i     ),
-    // mtvt address
-    .mtvt_addr_i                ( mtvt_addr_i      ),
+    //.mtvec_mode_o               ( mtvec_mode       ),
+    //// mtvec address
+    //.mtvec_addr_i               ( mtvec_addr_i     ),
+    //// mtvt address
+    //.mtvt_addr_i                ( mtvt_addr_i      ),
     .csr_mtvt_init_i            ( csr_mtvt_init    ),
 
     // Interface to CSRs     ( SRAM like                    )

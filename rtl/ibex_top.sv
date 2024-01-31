@@ -51,8 +51,8 @@ module ibex_top import ibex_pkg::*; #(
 
   input  logic [31:0]                  hart_id_i,
   input  logic [31:0]                  boot_addr_i,
-  input  logic [31:0]                  mtvec_addr_i,
-  input  logic [31:0]                  mtvt_addr_i,
+  //input  logic [31:0]                  mtvec_addr_i,
+  //input  logic [31:0]                  mtvt_addr_i,
 
   // Instruction memory interface
   output logic                         instr_req_o,
@@ -334,8 +334,8 @@ module ibex_top import ibex_pkg::*; #(
 
     .hart_id_i,
     .boot_addr_i,
-    .mtvt_addr_i,
-    .mtvec_addr_i,
+    //.mtvt_addr_i,
+    //.mtvec_addr_i,
 
     .instr_req_o,
     .instr_gnt_i,
