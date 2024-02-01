@@ -1054,9 +1054,11 @@ module ibex_cs_registers #(
   ////////////////////////
 
   // MSTATUS
+
+  // Reset value is in M-MODE
   localparam status_t MSTATUS_RST_VAL = '{mie:  1'b0,
                                           mpie: 1'b1,
-                                          mpp:  PRIV_LVL_U,
+                                          mpp:  PRIV_LVL_M,
                                           mprv: 1'b0,
                                           tw:   1'b0};
   ibex_csr #(
