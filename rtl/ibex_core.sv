@@ -1118,7 +1118,7 @@ module ibex_core import ibex_pkg::*; #(
     .csr_mtvec_o     (csr_mtvec),
     .csr_mtvec_init_i(csr_mtvec_init),
     .csr_mtvt_o                 ( csr_mtvt         ),
-    //.mtvec_mode_o               ( mtvec_mode       ),
+    .mtvec_mode_o               ( mtvec_mode       ),
     //// mtvec address
     //.mtvec_addr_i               ( mtvec_addr_i     ),
     //// mtvt address
