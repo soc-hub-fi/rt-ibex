@@ -1062,7 +1062,7 @@ module ibex_cs_registers #(
                                           mprv: 1'b0,
                                           tw:   1'b0};
   ibex_csr #(
-    .Width     ($bits(status_t)),
+    .Width     ($bits(status_t)), 
     .ShadowCopy(ShadowCSR),
     .ResetValue({MSTATUS_RST_VAL})
   ) u_mstatus_csr (
@@ -1373,7 +1373,7 @@ module ibex_cs_registers #(
   ibex_csr #(
     .Width     (32),
     .ShadowCopy(1'b0),
-    .ResetValue('0)
+    .ResetValue(MCLICBASE_ADDR)
   ) u_mclicbase (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
