@@ -407,10 +407,20 @@ module ibex_cs_registers #(
     csr_mie_wdata = csr_wdata_i;
     csr_mie_we    = 1'b1;
 
+    // Writes to mie are ignored while in CLIC mode
     case (csr_op_i)
-      CSR_OP_WRITE: csr_mie_wdata = CLIC ? {32'b0} : csr_wdata_i;
-      CSR_OP_SET:   csr_mie_wdata = CLIC ? {32'b0} : csr_wdata_i | mie_q;
-      CSR_OP_CLEAR: csr_mie_wdata = CLIC ? {32'b0} : (~csr_wdata_i) & mie_q;
+      CSR_OP_WRITE: begin 
+        csr_mie_wdata = csr_wdata_i;
+        csr_mie_we    = CLIC ? 1'b0 : 1'b1; 
+      end 
+      CSR_OP_SET: begin    
+        csr_mie_wdata = csr_wdata_i | mie_q;
+        csr_mie_we    = CLIC ? 1'b0 : 1'b1; 
+      end 
+      CSR_OP_CLEAR: begin  
+        csr_mie_wdata = (~csr_wdata_i) & mie_q;
+        csr_mie_we    = CLIC ? 1'b0 : 1'b1; 
+      end 
       CSR_OP_READ: begin
         csr_mie_wdata = CLIC ? {32'b0} : csr_wdata_i;
         csr_mie_we    = 1'b0;
