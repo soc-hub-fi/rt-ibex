@@ -553,7 +553,7 @@ module ibex_cs_registers #(
 
       CSR_MSCRATCHSWL:  csr_rdata_int = mscratchswl_q;
 
-      CSR_MCLICBASE:    csr_rdata_int = mclicbase_q;
+      CSR_MCLICBASE:    csr_rdata_int = MCLICBASE_ADDR;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
