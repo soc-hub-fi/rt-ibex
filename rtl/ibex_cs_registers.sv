@@ -553,7 +553,7 @@ module ibex_cs_registers #(
 
       CSR_MSCRATCHSWL:  csr_rdata_int = mscratchswl_q;
 
-      CSR_MCLICBASE:    csr_rdata_int = MCLICBASE_ADDR;
+      CSR_MCLICBASE:    csr_rdata_int = mclicbase_q;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
@@ -746,7 +746,7 @@ module ibex_cs_registers #(
     mintthresh_d   = csr_wdata_int;
     mscratchsw_d   = csr_wdata_int;
     mscratchswl_d  = csr_wdata_int;
-    mclicbase_d    = csr_wdata_int;
+    mclicbase_d    = {csr_wdata_int[31:12], 12'b0};
 
     mnxti_en       = 1'b0;
     mintstatus_en  = 1'b0;
