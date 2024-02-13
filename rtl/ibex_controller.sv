@@ -85,6 +85,8 @@ module ibex_controller #(
   output logic                  irq_ack_o,
   output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
   input  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl_i,
+  input  logic        irq_req_ctrl_i,
+  input  logic        irq_wu_ctrl_i,
 
   output logic [1:0]            trap_addr_mux_o,
 
@@ -421,7 +423,7 @@ module ibex_controller #(
   //   cannot be interrupted by regular interrupts),
   // - while single stepping.
   assign handle_irq = ~debug_mode_q & ~debug_single_step_i & ~nmi_mode_q &
-      (irq_nm | (irq_pending_i & irq_enabled));
+    (irq_nm | ((irq_pending_i | irq_req_ctrl_i) & irq_enabled)); // modified for CLIC
 
   // generate ID of fast interrupts, highest priority to lowest ID
   //always_comb begin : gen_mfip_id

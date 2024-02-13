@@ -624,7 +624,6 @@ module ibex_id_stage #(
   
       assign max_thresh = mintthresh_i > mintstatus_i.mil ? mintthresh_i : mintstatus_i.mil;
       assign irq_req_ctrl = (irq_level > max_thresh) && (|{clic_irqs_q, ibex_irqs_q}) && m_irq_enable_i;
-      assign irq_level_ctrl = irq_level;
   
       // tied to zero in CLIC mode
       assign mip_o = '0;
@@ -712,6 +711,8 @@ module ibex_id_stage #(
     .clic_irqs_i      (clic_irqs_q),
     .irq_nm_ext_i     (irq_nm_q),
     .nmi_mode_o       (nmi_mode_o),
+    .irq_wu_ctrl_i    (irq_wu_ctrl),
+    .irq_req_ctrl_i   (irq_req_ctrl),
     .irq_id_ctrl_i    (irq_id_ctrl),
     .irq_id_o         (irq_id_o),
     .irq_ack_o        (irq_ack_o),
