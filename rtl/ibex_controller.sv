@@ -567,6 +567,11 @@ module ibex_controller #(
           halt_if     = 1'b1;
 
           // IRQ interface
+          pc_set_o          = 1'b1;
+          pc_mux_o          = PC_EXC;
+          exc_pc_mux_o      = EXC_PC_IRQ;
+          exc_cause_o       = irq_id_ctrl_i;
+          
           irq_ack_o         = 1'b1;
           irq_id_o          = irq_id_ctrl_i;
           trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
@@ -656,6 +661,11 @@ module ibex_controller #(
             // instruction to complete (since it might have outstanding loads
             // or stores).
             halt_if     = 1'b1;
+            pc_set_o          = 1'b1;
+            pc_mux_o          = PC_EXC;
+            exc_pc_mux_o      = EXC_PC_IRQ;
+            exc_cause_o       = irq_id_ctrl_i;
+            
             // IRQ interface
             irq_ack_o         = 1'b1;
             irq_id_o          = irq_id_ctrl_i;
@@ -672,9 +682,10 @@ module ibex_controller #(
       IRQ_TAKEN: begin
         pc_mux_o     = PC_EXC;
         exc_pc_mux_o = EXC_PC_IRQ;
+        pc_set_o         = 1'b1;
 
         if (handle_irq) begin
-          pc_set_o         = 1'b1;
+          
 
           csr_save_if_o    = 1'b1;
           csr_save_cause_o = 1'b1;
