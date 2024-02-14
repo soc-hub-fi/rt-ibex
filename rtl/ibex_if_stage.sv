@@ -224,7 +224,7 @@ module ibex_if_stage import ibex_pkg::*; #(
       PC_BOOT: fetch_addr_n = { boot_addr_i[31:8], 8'h80 };
       PC_JUMP: fetch_addr_n = branch_target_ex_i;
       PC_EXC: begin 
-        if(CLIC && CLIC_SHV && irq_shv_i)
+        if(CLIC && CLIC_SHV && irq_shv_i)                                   // Abdesattar: Dubious!
           minhv_o = 1'b1;
         fetch_addr_n = exc_pc; // set PC to exception handler
       end                      
