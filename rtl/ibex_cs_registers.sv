@@ -736,9 +736,8 @@ module ibex_cs_registers #(
     // mtvec.MODE set to ###CLIC###
     // TODO: make runtime-configurable
     // mtvec.BASE must be 256-byte aligned
-    mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11}:
-                                      {csr_wdata_int[31:8], 6'b0, 2'b11};
-    mtvt_d       = csr_wdata_int;
+    mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};
+    mtvt_d       = csr_mtvt_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};;
     // CLIC regs
     mnxti_d        = csr_wdata_int;
     mnxti_d        = csr_wdata_int;
@@ -792,6 +791,7 @@ module ibex_cs_registers #(
           // Convert illegal values to U-mode
           if ((mstatus_d.mpp != PRIV_LVL_M) && (mstatus_d.mpp != PRIV_LVL_U)) begin
             mstatus_d.mpp = PRIV_LVL_U;
+            $fatal("PRIVELAGE TO USER MODE!?");
           end
         end
         
@@ -1263,7 +1263,7 @@ module ibex_cs_registers #(
   );
 
   // MSTACK
-  localparam status_stk_t MSTACK_RESET_VAL = '{mpie: 1'b1, mpp: PRIV_LVL_U};
+  localparam status_stk_t MSTACK_RESET_VAL = '{mpie: 1'b1, mpp: PRIV_LVL_M};
   ibex_csr #(
     .Width     ($bits(status_stk_t)),
     .ShadowCopy(1'b0),
