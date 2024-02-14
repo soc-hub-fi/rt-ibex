@@ -737,7 +737,9 @@ module ibex_cs_registers #(
     // TODO: make runtime-configurable
     // mtvec.BASE must be 256-byte aligned
     mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};
-    mtvt_d       = csr_mtvt_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};;
+
+    // Abdesattar: maybe not this value. 
+    mtvt_d       = csr_mtvt_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};
     // CLIC regs
     mnxti_d        = csr_wdata_int;
     mnxti_d        = csr_wdata_int;
