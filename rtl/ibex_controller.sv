@@ -423,8 +423,8 @@ module ibex_controller #(
   //   cannot be interrupted by regular interrupts),
   // - while single stepping.
   assign handle_irq = ~debug_mode_q & ~debug_single_step_i & ~nmi_mode_q &
-    (irq_nm | ((irq_pending_i | irq_req_ctrl_i) & irq_enabled)); // modified for CLIC
-
+    ( ((irq_pending_i | irq_req_ctrl_i) & irq_enabled)); // modified for CLIC
+  //irq_nm |
   // generate ID of fast interrupts, highest priority to lowest ID
   //always_comb begin : gen_mfip_id
   //  mfip_id = 4'd0;
@@ -558,7 +558,7 @@ module ibex_controller #(
         end
 
         // handle interrupts
-        if (handle_irq) begin
+        if (handle_irq) begin                                                         // Abdesattar: 
           // We are handling an interrupt. Set halt_if to tell IF not to give
           // us any more instructions before it redirects to the handler, but
           // don't set flush_id: we must allow this instruction to complete
@@ -567,21 +567,22 @@ module ibex_controller #(
           halt_if     = 1'b1;
 
           // IRQ interface
-          pc_set_o          = 1'b1;
-          pc_mux_o          = PC_EXC;
-          exc_pc_mux_o      = EXC_PC_IRQ;
-          exc_cause_o       = irq_id_ctrl_i;
+          pc_set_o          = 1'b1;                          
+
+          exc_pc_mux_o      = EXC_PC_IRQ;            // Abdesattar: select signal of the first PC mux (exception selection mux), we are selecting which type of exception to pass to the second mux          
+          pc_mux_o          = PC_EXC;                // Abdesattar: select signal for the second mux, we are setting PC to exc_handler address              
+          exc_cause_o       = irq_id_ctrl_i;         // Abdesattar: needed to calculate vector entry (in vectored/clic modes)
           
-          irq_ack_o         = 1'b1;
-          irq_id_o          = irq_id_ctrl_i;
-          trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
+          irq_ack_o         = 1'b1;                  // Abdesattar: we shouldn't ack yet, at least not when in CLIC mode      
+          irq_id_o          = irq_id_ctrl_i;         // Abdesattar: to be saved in mintstatus
+          trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;   // to be saved in mstatus
           csr_save_cause_o  = 1'b1;
           csr_cause_o       = {1'b1,irq_id_ctrl_i};
           csr_irq_level_o   = irq_level_ctrl_i;
           csr_save_if_o     = 1'b1;
         end
-
-        // enter debug mode
+                                                    // Abdesattar: todo At this point an extra fsm state is required for CLIC fetch : SECOND_FETCH
+        // enter debug mode                           // Control should not be transfered to DECODE, otherwise the fetched CLIC vector entry is likely to be interpreted as an illegal_instr
         if (enter_debug_mode) begin
           ctrl_fsm_ns = DBG_TAKEN_IF;
           // Halt IF only for now, ID will be flushed in DBG_TAKEN_IF as the
@@ -665,6 +666,7 @@ module ibex_controller #(
             pc_mux_o          = PC_EXC;
             exc_pc_mux_o      = EXC_PC_IRQ;
             exc_cause_o       = irq_id_ctrl_i;
+
             
             // IRQ interface
             irq_ack_o         = 1'b1;
@@ -845,7 +847,7 @@ module ibex_controller #(
           endcase
         end else begin
           // special instructions and pipeline flushes
-          if (mret_insn) begin
+          if (mret_insn) begin                                                  // Abdesattar: todo hmmmmmm
             pc_mux_o              = PC_ERET;
             pc_set_o              = 1'b1;
             csr_restore_mret_id_o = 1'b1;
