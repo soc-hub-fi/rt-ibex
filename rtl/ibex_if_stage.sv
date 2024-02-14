@@ -207,7 +207,8 @@ module ibex_if_stage import ibex_pkg::*; #(
       EXC_PC_IRQ:     exc_pc = { csr_mtvec_i[31:8], 1'b0, irq_vec, 2'b00 };    // Abdesattar: Vectored mode
       EXC_PC_DBD:     exc_pc = DmHaltAddr;
       EXC_PC_DBG_EXC: exc_pc = DmExceptionAddr;
-                                                                              // Abdesattar: todo CLIC mode
+                                                                              // Abdesattar: todo CLIC mode fetch vector table entry (i.e mtvt<<6+4*excode) as an instruction
+                                                                              // Abdesattar: todo CLIC mode set pc to the previouvly fetched table entry
       default:        exc_pc = { csr_mtvec_i[31:8], 8'h00                };   // Abdesattar: Basic mode by default
     endcase
   end
@@ -223,7 +224,7 @@ module ibex_if_stage import ibex_pkg::*; #(
     unique case (pc_mux_internal)
       PC_BOOT: fetch_addr_n = { boot_addr_i[31:8], 8'h80 };
       PC_JUMP: fetch_addr_n = branch_target_ex_i;
-      PC_EXC: begin 
+      PC_EXC: begin                                                          // Abdesattar: Jump to handler
         if(CLIC && CLIC_SHV && irq_shv_i)                                   // Abdesattar: Dubious!
           minhv_o = 1'b1;
         fetch_addr_n = exc_pc; // set PC to exception handler
