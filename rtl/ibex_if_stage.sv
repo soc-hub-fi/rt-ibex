@@ -203,11 +203,12 @@ module ibex_if_stage import ibex_pkg::*; #(
     end
 
     unique case (exc_pc_mux_i)
-      EXC_PC_EXC:     exc_pc = { csr_mtvec_i[31:8], 8'h00                };
-      EXC_PC_IRQ:     exc_pc = { csr_mtvec_i[31:8], 1'b0, irq_vec, 2'b00 };
+      EXC_PC_EXC:     exc_pc = { csr_mtvec_i[31:8], 8'h00                };    // Abdesattar: Basic mode
+      EXC_PC_IRQ:     exc_pc = { csr_mtvec_i[31:8], 1'b0, irq_vec, 2'b00 };    // Abdesattar: Vectored mode
       EXC_PC_DBD:     exc_pc = DmHaltAddr;
       EXC_PC_DBG_EXC: exc_pc = DmExceptionAddr;
-      default:        exc_pc = { csr_mtvec_i[31:8], 8'h00                };
+                                                                              // Abdesattar: todo CLIC mode
+      default:        exc_pc = { csr_mtvec_i[31:8], 8'h00                };   // Abdesattar: Basic mode by default
     endcase
   end
 
@@ -240,7 +241,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   assign csr_mtvec_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
 
   // tell CS register file to initialize mtvt on boot
-  assign csr_mtvt_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
+  assign csr_mtvt_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;    // Abdesattar: might cause problems later 
 
   // SEC_CM: BUS.INTEGRITY
   if (MemECC) begin : g_mem_ecc
