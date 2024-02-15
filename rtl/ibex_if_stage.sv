@@ -188,10 +188,14 @@ module ibex_if_stage import ibex_pkg::*; #(
   logic        [7:0] unused_csr_mtvec;
   logic              unused_exc_cause;
 
+  logic        [31:0] clic_vtable_entry_addr;
+
   assign unused_boot_addr = boot_addr_i[7:0];
   assign unused_csr_mtvec = csr_mtvec_i[7:0];
 
   assign unused_exc_cause = |{exc_cause.irq};
+
+  assign clic_vtable_entry_addr = { m_trap_base_addr_clic_shv_i[31:6], 6'b0} + {m_exc_vec_pc_mux_i, 2'b0};   
 
   // exception PC selection mux
   always_comb begin : exc_pc_mux
@@ -207,8 +211,8 @@ module ibex_if_stage import ibex_pkg::*; #(
       EXC_PC_IRQ:     exc_pc = { csr_mtvec_i[31:8], 1'b0, irq_vec, 2'b00 };    // Abdesattar: Vectored mode
       EXC_PC_DBD:     exc_pc = DmHaltAddr;
       EXC_PC_DBG_EXC: exc_pc = DmExceptionAddr;
-                                                                              // Abdesattar: todo CLIC mode fetch vector table entry (i.e mtvt<<6+4*excode) as an instruction
-                                                                              // Abdesattar: todo CLIC mode set pc to the previouvly fetched table entry
+      EXC_PC_IRQ_CLIC:exc_pc = (CLIC && CLIC_SHV && irq_shv_i ) ? clic_vtable_entry_addr : { csr_mtvec_i[31:6], 6'b0};                                                                        // Abdesattar: todo CLIC mode fetch vector table entry (i.e mtvt<<6+4*excode) as an instruction
+                                                                                                                          // Abdesattar: todo CLIC mode set pc to the previouvly fetched table entry
       default:        exc_pc = { csr_mtvec_i[31:8], 8'h00                };   // Abdesattar: Basic mode by default
     endcase
   end
@@ -225,7 +229,7 @@ module ibex_if_stage import ibex_pkg::*; #(
       PC_BOOT: fetch_addr_n = { boot_addr_i[31:8], 8'h80 };
       PC_JUMP: fetch_addr_n = branch_target_ex_i;
       PC_EXC: begin                                                          // Abdesattar: Jump to handler
-        if(CLIC && CLIC_SHV && irq_shv_i)                                   // Abdesattar: Dubious!
+        if(CLIC && CLIC_SHV && irq_shv_i)                                 
           minhv_o = 1'b1;
         fetch_addr_n = exc_pc; // set PC to exception handler
       end                      
