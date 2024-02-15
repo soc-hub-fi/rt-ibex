@@ -14,7 +14,10 @@ module ibex_controller #(
   parameter bit WritebackStage  = 1'b0,
   parameter bit BranchPredictor = 1'b0,
   parameter bit MemECC          = 1'b0,
-  parameter int unsigned NUM_INTERRUPTS = 64
+  parameter bit CLIC              = 1'b1, 
+  parameter int unsigned NUM_INTERRUPTS = 64,
+
+  parameter int unsigned EXCCODE_PAD = 12 - $clog2(NUM_INTERRUPTS)
  ) (
   input  logic                  clk_i,
   input  logic                  rst_ni,
@@ -110,6 +113,7 @@ module ibex_controller #(
   output logic                  csr_save_cause_o,
   output logic [31:0]           csr_mtval_o,
   input  ibex_pkg::priv_lvl_e   priv_mode_i,
+  // input  logic [31:0]           csr_mtvec_i,
 
   // stall & flush signals
   input  logic                  stall_id_i,
@@ -178,6 +182,8 @@ module ibex_controller #(
   logic ebrk_insn;
   logic csr_pipe_flush;
   logic instr_fetch_err;
+
+  logic [11:0] clic_exccode;
 
 `ifndef SYNTHESIS
   // synopsys translate_off
@@ -458,6 +464,8 @@ module ibex_controller #(
 
   assign debug_cause_o = debug_cause_q;
 
+  assign clic_exccode = 12'b0 | irq_id_ctrl_i;
+
   /////////////////////
   // Core controller //
   /////////////////////
@@ -558,7 +566,7 @@ module ibex_controller #(
         end
 
         // handle interrupts
-        if (handle_irq) begin                                                         // Abdesattar: 
+        if (handle_irq) begin                                                         
           // We are handling an interrupt. Set halt_if to tell IF not to give
           // us any more instructions before it redirects to the handler, but
           // don't set flush_id: we must allow this instruction to complete
@@ -665,17 +673,15 @@ module ibex_controller #(
             pc_set_o          = 1'b1;
             pc_mux_o          = PC_EXC;
             exc_pc_mux_o      = EXC_PC_IRQ;
-            exc_cause_o       = irq_id_ctrl_i;
+            // exc_cause_o       = irq_id_ctrl_i;   //todo 
 
             
             // IRQ interface
-            irq_ack_o         = 1'b1;
-            irq_id_o          = irq_id_ctrl_i;
             trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
-            csr_save_cause_o  = 1'b1;
-            csr_cause_o       = {1'b1,irq_id_ctrl_i};
-            csr_irq_level_o   = irq_level_ctrl_i;
-            csr_save_if_o     = 1'b1;
+            // csr_save_cause_o  = 1'b1; 
+            // csr_cause_o       = {1'b1,irq_id_ctrl_i};
+            // csr_irq_level_o   = irq_level_ctrl_i;
+            // csr_save_if_o     = 1'b1;
           end
         end
 
@@ -683,7 +689,6 @@ module ibex_controller #(
 
       IRQ_TAKEN: begin
         pc_mux_o     = PC_EXC;
-        exc_pc_mux_o = EXC_PC_IRQ;
         pc_set_o         = 1'b1;
 
         if (handle_irq) begin
@@ -703,23 +708,35 @@ module ibex_controller #(
             end
 
             nmi_mode_d  = 1'b1; // enter NMI mode
-          //end else if (irqs_i.irq_fast != 15'b0) begin
-          //  // generate exception cause ID from fast interrupt ID:
-          //  // - first bit distinguishes interrupts from exceptions,
-          //  // - second bit adds 16 to fast interrupt ID
-          //  // for example ExcCauseIrqFast0 = {1'b1, 5'd16}
-          //  exc_cause_o = 
-          //    '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};
-//
+            //end else if (irqs_i.irq_fast != 15'b0) begin
+            //  // generate exception cause ID from fast interrupt ID:
+            //  // - first bit distinguishes interrupts from exceptions,
+            //  // - second bit adds 16 to fast interrupt ID
+            //  // for example ExcCauseIrqFast0 = {1'b1, 5'd16}
+            //  exc_cause_o = 
+            //    '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};//          
+            exc_pc_mux_o = EXC_PC_IRQ;
           end 
-          else if (ibex_irqs_i.irq_external) begin
-            exc_cause_o = ExcCauseIrqExternalM;
-          end else if (ibex_irqs_i.irq_software) begin
-            exc_cause_o = ExcCauseIrqSoftwareM;
-          end else begin // irqs_i.irq_timer
-            exc_cause_o = ExcCauseIrqTimerM;
-          end
+          else begin
+            if (ibex_irqs_i.irq_external) begin
+              exc_cause_o = ExcCauseIrqExternalM;
+            end else if (ibex_irqs_i.irq_software) begin
+              exc_cause_o = ExcCauseIrqSoftwareM;
+            end else if(ibex_irqs_i.irq_timer)begin // irqs_i.irq_timer
+              exc_cause_o = ExcCauseIrqTimerM; 
+            end else begin
+              exc_cause_o       = {1'b1, 1'b1, priv_mode_i, 1'b0, irq_level_ctrl_i, clic_exccode};
+              exc_pc_mux_o = EXC_PC_IRQ_CLIC;
+            end 
+          end 
         end
+
+        csr_save_cause_o  = 1'b1; 
+        csr_cause_o       = {1'b1,irq_id_ctrl_i};
+        csr_irq_level_o   = irq_level_ctrl_i;
+        csr_save_if_o     = 1'b1;
+        irq_ack_o         = 1'b1;    // todo
+        irq_id_o          = irq_id_ctrl_i;  //todo
 
         ctrl_fsm_ns = DECODE;
       end
