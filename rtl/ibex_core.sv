@@ -408,7 +408,7 @@ module ibex_core import ibex_pkg::*; #(
   logic        illegal_insn_id, unused_illegal_insn_id; // ID stage sees an illegal instruction
 
   assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
-    ? exc_cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
+    ? exc_cause.cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
 
   assign irq_nm                 = irq_i[31];
   assign ibex_irqs.irq_software = irq_i[3];
@@ -688,6 +688,7 @@ module ibex_core import ibex_pkg::*; #(
     //.csr_irq_sec_o        ( csr_irq_sec          ),
     .csr_cause_o          ( csr_cause            ),
     .csr_irq_level_o      ( csr_irq_level        ),
+    //.csr_mtvec_i          (csr_mtvec),
 
     // LSU
     .lsu_req_o     (lsu_req),  // to load store unit

@@ -110,6 +110,7 @@ module ibex_id_stage #(
   input  logic                      csr_mstatus_tw_i,
   input  logic                      illegal_csr_insn_i,
   input  logic                      data_ind_timing_i,
+  input  logic                      csr_mtvec_i,
 
   // Interface to load store unit
   output logic                      lsu_req_o,
@@ -607,7 +608,15 @@ module ibex_id_stage #(
           assign tmp_i = i;
           assign tmp_mask[i] = tmp_i[j];
         end
-        assign irq_id_ctrl[j] = |(tmp_mask & {clic_irqs_q, ibex_irqs_q});
+        assign irq_id_ctrl[j] = |(tmp_mask & {clic_irqs_q,
+                                              5'b0, 
+                                              ibex_irqs_q.irq_external,
+                                              2'b0, 
+                                              ibex_irqs_q.irq_timer,
+                                              3'b0, 
+                                              ibex_irqs_q.irq_software,
+                                              3'b0 
+                                              });
       end
       // pragma translate_off
   `ifndef VERILATOR
@@ -730,6 +739,7 @@ module ibex_id_stage #(
     .csr_mtval_o          (csr_mtval_o),
     .priv_mode_i          (priv_mode_i),
     .csr_irq_level_o      (csr_irq_level_o),
+    //.csr_mtvec_i          (csr_mtvec_i),
 
     // Debug Signal
     .debug_mode_o         (debug_mode_o),
