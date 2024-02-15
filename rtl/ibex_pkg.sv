@@ -301,11 +301,12 @@ package ibex_pkg;
   } pc_sel_e;
 
   // Exception PC mux selection
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     EXC_PC_EXC,
     EXC_PC_IRQ,
     EXC_PC_DBD,
-    EXC_PC_DBG_EXC // Exception while in debug mode
+    EXC_PC_DBG_EXC, // Exception while in debug mode
+    EXC_PC_IRQ_CLIC 
   } exc_pc_sel_e;
 
   // Interrupt requests
