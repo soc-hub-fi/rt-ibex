@@ -630,15 +630,15 @@ module ibex_id_stage #(
       // The effective interrupt threshold is the maximum of mintstatus.mil and
       // mintthresh.
       logic [7:0] max_thresh;
+      logic irq_req_ctrl;
+      logic irq_wu_ctrl;
   
       assign max_thresh = mintthresh_i > mintstatus_i.mil ? mintthresh_i : mintstatus_i.mil;
       assign irq_req_ctrl = (irq_level > max_thresh) && (|{clic_irqs_q, ibex_irqs_q}) && m_irq_enable_i;
   
       // tied to zero in CLIC mode
       assign mip_o = '0;
-  
-      assign irq_sec_ctrl = 1'b0;
-  
+
       // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
       assign irq_wu_ctrl = |({clic_irqs_q, ibex_irqs_q});
   
