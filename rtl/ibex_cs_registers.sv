@@ -242,8 +242,6 @@ module ibex_cs_registers #(
   status_t     mstatus_q, mstatus_d;
   logic        mstatus_err;
   logic        mstatus_en;
-  logic [31:0] medeleg_q, medeleg_d;
-  logic        medeleg_en;
   irqs_t       mie_q, mie_d;
   logic        mie_en;
   logic [31:0] mscratch_q;
@@ -455,8 +453,6 @@ module ibex_cs_registers #(
         csr_rdata_int[CSR_MSTATUS_MPRV_BIT]                             = mstatus_q.mprv;
         csr_rdata_int[CSR_MSTATUS_TW_BIT]                               = mstatus_q.tw;
       end
-
-      CSR_MEDELEG: csr_rdata_int = medeleg_q;
 
       // mstatush: All zeros for Ibex (fixed little endian and all other bits reserved)
       CSR_MSTATUSH: csr_rdata_int = '0;
@@ -721,8 +717,6 @@ module ibex_cs_registers #(
     priv_lvl_d   = priv_lvl_q;
     mstatus_en   = 1'b0;
     mstatus_d    = mstatus_q;
-    medeleg_d    = csr_wdata_int;
-    medeleg_en   = 1'b0;
     mie_en       = 1'b0;
     mscratch_en  = 1'b0;
     mepc_en      = 1'b0;
@@ -797,7 +791,6 @@ module ibex_cs_registers #(
           end
         end
         
-        CSR_MEDELEG: medeleg_en = 1'b1;
         // interrupt enable
         CSR_MIE: 
           if (!CLIC)
@@ -1058,8 +1051,8 @@ module ibex_cs_registers #(
 
   // Qualify incoming interrupt requests in mip CSR with mie CSR for controller and to re-enable
   // clock upon WFI (must be purely combinational).
-  assign irqs_o        = mip & mie_q;
-  assign irq_pending_o = |irqs_o;
+  //assign ibex_irqs_o        = 
+  assign irq_pending_o = |mip & mie_q;;
 
   ////////////////////////
   // CSR instantiations //
@@ -1084,20 +1077,6 @@ module ibex_cs_registers #(
     .wr_en_i   (mstatus_en),
     .rd_data_o (mstatus_q),
     .rd_error_o(mstatus_err)
-  );
-
-  // MEDELEG
-  ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
-  ) u_medeleg_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (medeleg_d),
-    .wr_en_i   (medeleg_en),
-    .rd_data_o (medeleg_q),
-    .rd_error_o()
   );
 
   // MEPC
