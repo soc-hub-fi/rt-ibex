@@ -793,7 +793,7 @@ module ibex_cs_registers #(
           // Convert illegal values to U-mode
           if ((mstatus_d.mpp != PRIV_LVL_M) && (mstatus_d.mpp != PRIV_LVL_U)) begin
             mstatus_d.mpp = PRIV_LVL_U;
-            $fatal("PRIVELAGE TO USER MODE!?");
+            //$fatal("PRIVELAGE TO USER MODE!?");
           end
         end
         
@@ -1004,7 +1004,7 @@ module ibex_cs_registers #(
         end else begin
           // otherwise just set mstatus.MPIE/MPP
           mstatus_d.mpie = 1'b1;
-          mstatus_d.mpp  = PRIV_LVL_U;
+          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode 
         end
       end // csr_restore_mret_i
 
