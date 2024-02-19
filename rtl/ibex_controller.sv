@@ -681,7 +681,7 @@ module ibex_controller #(
             // csr_save_cause_o  = 1'b1; 
             // csr_cause_o       = {1'b1,irq_id_ctrl_i};
             // csr_irq_level_o   = irq_level_ctrl_i;
-            // csr_save_if_o     = 1'b1;
+            csr_save_if_o     = 1'b1;    // Abdesattar: Saving pc to csr_mepc should be performed here (while IF stage is halter) 
           end
         end
 
@@ -694,7 +694,7 @@ module ibex_controller #(
         if (handle_irq) begin
           
 
-          csr_save_if_o    = 1'b1;
+          //csr_save_if_o    = 1'b1;
           csr_save_cause_o = 1'b1;
 
           // Prioritise interrupts as required by the architecture
@@ -733,10 +733,11 @@ module ibex_controller #(
 
         csr_save_cause_o  = 1'b1; 
         csr_cause_o       = {1'b1,irq_id_ctrl_i};
+        //csr_save_if_o     = 1'b1;
         csr_irq_level_o   = irq_level_ctrl_i;
-        csr_save_if_o     = 1'b1;
-        irq_ack_o         = 1'b1;    // todo
-        irq_id_o          = irq_id_ctrl_i;  //todo
+        
+        irq_ack_o         = 1'b1;    
+        irq_id_o          = irq_id_ctrl_i;  
 
         ctrl_fsm_ns = DECODE;
       end
