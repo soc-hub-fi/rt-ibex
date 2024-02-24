@@ -338,9 +338,9 @@ package ibex_pkg;
   } exc_cause_t;
 
   localparam exc_cause_t ExcCauseIrqSoftwareM =    '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd03};
-  localparam exc_cause_t ExcCauseIrqTimerM =       '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd07};
-  localparam exc_cause_t ExcCauseIrqExternalM =    '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd11};
-  localparam exc_cause_t ExcCauseIrqNm =           '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd31};
+  localparam exc_cause_t ExcCauseIrqTimerM =       '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd07};
+  localparam exc_cause_t ExcCauseIrqExternalM =    '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd11};
+  localparam exc_cause_t ExcCauseIrqNm =           '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd31};
   localparam exc_cause_t ExcCauseInsnAddrMisa =    '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd00};
   localparam exc_cause_t ExcCauseInstrAccessFault ='{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd01};
   localparam exc_cause_t ExcCauseIllegalInsn =     '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd02};
