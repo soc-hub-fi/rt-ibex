@@ -650,7 +650,7 @@ module ibex_controller #(
 
         // If entering debug mode or handling an IRQ the core needs to wait until any instruction in
         // ID or WB has finished executing. Stall IF during that time.
-        if ((enter_debug_mode || handle_irq) && (stall || id_wb_pending)) begin
+        if ((enter_debug_mode || handle_irq) && (stall || id_wb_pending)) begin                // Abdesattar:  
           halt_if = 1'b1;
         end
 
@@ -669,7 +669,7 @@ module ibex_controller #(
             // to the handler, but don't set flush_id: we must allow this
             // instruction to complete (since it might have outstanding loads
             // or stores).
-            halt_if     = 1'b1;
+            halt_if           = 1'b1;
             pc_set_o          = 1'b1;
             pc_mux_o          = PC_EXC;
             exc_pc_mux_o      = EXC_PC_IRQ;
@@ -681,14 +681,14 @@ module ibex_controller #(
             // csr_save_cause_o  = 1'b1; 
             // csr_cause_o       = {1'b1,irq_id_ctrl_i};
             // csr_irq_level_o   = irq_level_ctrl_i;
-            csr_save_if_o     = 1'b1;    // Abdesattar: Saving pc to csr_mepc should be performed here (while IF stage is halter) 
+            csr_save_if_o     = 1'b1;    // Abdesattar: Saving pc to csr_mepc should be performed here (while IF stage is halted) 
           end
         end
 
       end // DECODE
 
       IRQ_TAKEN: begin
-        pc_mux_o     = PC_EXC;
+        pc_mux_o         = PC_EXC;
         pc_set_o         = 1'b1;
 
         if (handle_irq) begin
@@ -718,6 +718,12 @@ module ibex_controller #(
             exc_pc_mux_o = EXC_PC_IRQ;
           end 
           else begin
+            if(!CLIC) begin            // Better if we check for mtvec[1:0], but this is sufficient 
+              exc_pc_mux_o = EXC_PC_IRQ;
+            end else begin
+              exc_pc_mux_o = EXC_PC_IRQ_CLIC;
+            end
+
             if (ibex_irqs_i.irq_external) begin
               exc_cause_o = ExcCauseIrqExternalM;
             end else if (ibex_irqs_i.irq_software) begin
@@ -726,7 +732,6 @@ module ibex_controller #(
               exc_cause_o = ExcCauseIrqTimerM; 
             end else begin
               exc_cause_o       = {1'b1, 1'b1, priv_mode_i, 1'b0, irq_level_ctrl_i, clic_exccode};
-              exc_pc_mux_o = EXC_PC_IRQ_CLIC;
             end 
           end 
         end
