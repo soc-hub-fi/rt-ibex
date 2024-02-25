@@ -725,14 +725,15 @@ module ibex_controller #(
               exc_pc_mux_o = EXC_PC_IRQ_CLIC;
             end
 
+            // Explicit seperation of CLINT and CLIC interrupt sources
             if (ibex_irqs_i.irq_external) begin
-              exc_cause_o = ExcCauseIrqExternalM;
+              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd11};
             end else if (ibex_irqs_i.irq_software) begin
-              exc_cause_o = ExcCauseIrqSoftwareM;
+              exc_cause_o = '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd03};
             end else if(ibex_irqs_i.irq_timer)begin // irqs_i.irq_timer
-              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd07};; 
+              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd07}; 
             end else begin
-              exc_cause_o       = {1'b1, 1'b1, priv_mode_i, 1'b0, mintstatus_i.mil, clic_exccode};
+              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: clic_exccode};  
             end 
           end 
         end
