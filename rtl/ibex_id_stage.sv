@@ -727,7 +727,7 @@ module ibex_id_stage #(
     .irq_ack_o        (irq_ack_o),
     .irq_level_ctrl_i (irq_level),
     .trap_addr_mux_o  (trap_addr_mux_o),
-
+    .mintstatus_i     (mintstatus_i),
     // CSR Controller Signals
     .csr_save_if_o        (csr_save_if_o),
     .csr_save_id_o        (csr_save_id_o),
@@ -1199,7 +1199,7 @@ module ibex_id_stage #(
 
   // An instruction is ready to move to the writeback stage (or retire if there is no writeback
   // stage)
-  assign en_wb_o = instr_done;
+  assign en_wb_o = instr_done;                                            
 
   assign perf_mul_wait_o = stall_multdiv & mult_en_dec;
   assign perf_div_wait_o = stall_multdiv & div_en_dec;
