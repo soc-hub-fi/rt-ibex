@@ -1002,13 +1002,13 @@ module ibex_cs_registers #(
           mcause_en      = 1'b1;
           mcause_d       = mstack_cause_q;
         end else begin
-          // otherwise just set mstatus.MPIE/MPP
-          mstatus_d.mpie = 1'b1;
-          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode  
-
-          // restore interrupt prio levels 
+          // otherwise restore interrupt prio levels 
           mcause_d.mpil = mintstatus_q.mil;
           mintstatus_d.mil = mcause_q.mpil;
+          
+          // set mstatus.MPIE/MPP
+          mstatus_d.mpie = 1'b1;
+          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode  
         end
       end // csr_restore_mret_i
 
