@@ -90,6 +90,7 @@ module ibex_controller #(
   input  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl_i,
   input  logic        irq_req_ctrl_i,
   input  logic        irq_wu_ctrl_i,
+  input  ibex_pkg::mintstatus_t mintstatus_i, 
 
   output logic [1:0]            trap_addr_mux_o,
 
@@ -729,9 +730,9 @@ module ibex_controller #(
             end else if (ibex_irqs_i.irq_software) begin
               exc_cause_o = ExcCauseIrqSoftwareM;
             end else if(ibex_irqs_i.irq_timer)begin // irqs_i.irq_timer
-              exc_cause_o = ExcCauseIrqTimerM; 
+              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd07};; 
             end else begin
-              exc_cause_o       = {1'b1, 1'b1, priv_mode_i, 1'b0, irq_level_ctrl_i, clic_exccode};
+              exc_cause_o       = {1'b1, 1'b1, priv_mode_i, 1'b0, mintstatus_i.mil, clic_exccode};
             end 
           end 
         end

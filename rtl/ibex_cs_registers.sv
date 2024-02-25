@@ -260,7 +260,7 @@ module ibex_cs_registers #(
   logic        mtvt_en;
   logic [31:0] mnxti_q, mnxti_d;
   logic        mnxti_en;
-  logic [31:0] mintstatus_q, mintstatus_d;
+  mintstatus_t mintstatus_q, mintstatus_d;
   logic        mintstatus_en;
   logic [31:0] mintthresh_q, mintthresh_d;
   logic        mintthresh_en;
@@ -947,12 +947,17 @@ module ibex_cs_registers #(
           // save current status
           mstatus_d.mpie = mstatus_q.mie;
           mstatus_d.mpp  = priv_lvl_q;
+
           mepc_en        = 1'b1;
           mepc_d         = exception_pc;
           mcause_en      = 1'b1;
           mcause_d       = csr_mcause_i;
           // save previous status for recoverable NMI
           mstack_en      = 1'b1;
+
+          // Save the interrupt's priority level 
+          mintstatus_en  = 1'b1;
+          mintstatus_d.mil = irq_level_i;
 
           if (!(mcause_d.irq)) begin
             // SEC_CM: EXCEPTION.CTRL_FLOW.LOCAL_ESC
