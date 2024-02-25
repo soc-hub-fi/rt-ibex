@@ -982,6 +982,8 @@ module ibex_cs_registers #(
         mstatus_en     = 1'b1;
         mstatus_d.mie  = mstatus_q.mpie; // re-enable interrupts
 
+        mintstatus_en  = 1'b1;
+
         if (mstatus_q.mpp != PRIV_LVL_M) begin
           mstatus_d.mprv = 1'b0;
         end
@@ -1002,7 +1004,11 @@ module ibex_cs_registers #(
         end else begin
           // otherwise just set mstatus.MPIE/MPP
           mstatus_d.mpie = 1'b1;
-          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode 
+          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode  
+
+          // restore interrupt prio levels 
+          mcause_d.mpil = mintstatus_q.mil;
+          mintstatus_d.mil = mcause_q.mpil;
         end
       end // csr_restore_mret_i
 
