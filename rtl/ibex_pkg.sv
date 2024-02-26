@@ -282,6 +282,7 @@ package ibex_pkg;
     DECODE,
     FLUSH,
     IRQ_TAKEN,
+    LOAD_VTABLE_ENTRY,
     DBG_TAKEN_IF,
     DBG_TAKEN_ID
   } ctrl_fsm_e;
@@ -306,7 +307,8 @@ package ibex_pkg;
     EXC_PC_IRQ,
     EXC_PC_DBD,
     EXC_PC_DBG_EXC, // Exception while in debug mode
-    EXC_PC_IRQ_CLIC 
+    EXC_PC_IRQ_CLIC, 
+    EXC_PC_VTABLE
   } exc_pc_sel_e;
 
   // Interrupt requests
