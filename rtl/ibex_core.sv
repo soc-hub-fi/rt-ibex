@@ -404,6 +404,9 @@ module ibex_core import ibex_pkg::*; #(
   logic        perf_load;
   logic        perf_store;
 
+  logic        mask_illegal_inst;
+  logic        if_instr_valid;
+
   // for RVFI
   logic        illegal_insn_id, unused_illegal_insn_id; // ID stage sees an illegal instruction
 
@@ -524,6 +527,7 @@ module ibex_core import ibex_pkg::*; #(
     .pc_id_o                 (pc_id),
     .pmp_err_if_i            (pmp_req_err[PMP_I]),
     .pmp_err_if_plus2_i      (pmp_req_err[PMP_I2]),
+    .if_instr_valid_o        (if_instr_valid),
 
     // control signals
     .instr_valid_clear_i   (instr_valid_clear),
@@ -539,6 +543,7 @@ module ibex_core import ibex_pkg::*; #(
     .icache_enable_i       (icache_enable),
     .icache_inval_i        (icache_inval),
     .icache_ecc_error_o    (icache_ecc_error),
+    .mask_illegal_inst_i   (mask_illegal_inst),
 
     .m_exc_vec_pc_mux_i  ( m_exc_vec_pc_mux_id ),
 
@@ -641,6 +646,8 @@ module ibex_core import ibex_pkg::*; #(
     .instr_fetch_err_i      (instr_fetch_err),
     .instr_fetch_err_plus2_i(instr_fetch_err_plus2),
     .illegal_c_insn_i       (illegal_c_insn_id),
+    .mask_illegal_inst_o    (mask_illegal_inst),
+    .if_instr_valid_i       (if_instr_valid),    
 
     .pc_id_i(pc_id),
 
