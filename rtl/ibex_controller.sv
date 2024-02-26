@@ -42,6 +42,7 @@ module ibex_controller #(
   input  logic                  instr_fetch_err_i,       // instr has error
   input  logic                  instr_fetch_err_plus2_i, // instr error is x32
   input  logic [31:0]           pc_id_i,                 // instr address
+  input  logic                  if_instr_valid_i,        // Valid instruction (to identify vtable entry after prefetch_unit invalidation)
 
   // to IF-ID pipeline stage
   output logic                  instr_valid_clear_o,     // kill instr in IF-ID reg
@@ -51,6 +52,8 @@ module ibex_controller #(
   input  logic                  instr_exec_i,            // Execution control, when clear ID/EX
                                                          // stage stops accepting instructions from
                                                          // IF
+  output logic                  mask_illegal_inst_o,     // To avoid a potential illegal_instr trap caused by the fetched vtable entry
+
   // to prefetcher
   output logic                  instr_req_o,             // start fetching instructions
   output logic                  pc_set_o,                // jump to address set by pc_mux
@@ -185,6 +188,7 @@ module ibex_controller #(
   logic instr_fetch_err;
 
   logic [11:0] clic_exccode;
+  logic mask_illegal_inst;
 
 `ifndef SYNTHESIS
   // synopsys translate_off
@@ -467,6 +471,8 @@ module ibex_controller #(
 
   assign clic_exccode = 12'b0 | irq_id_ctrl_i;
 
+  assign mask_illegal_inst_o = mask_illegal_inst;
+
   /////////////////////
   // Core controller //
   /////////////////////
@@ -517,6 +523,7 @@ module ibex_controller #(
     perf_jump_o            = 1'b0;
 
     controller_run_o       = 1'b0;
+    mask_illegal_inst      = 1'b0;
 
     unique case (ctrl_fsm_cs)
       RESET: begin
@@ -691,6 +698,7 @@ module ibex_controller #(
       IRQ_TAKEN: begin
         pc_mux_o         = PC_EXC;
         pc_set_o         = 1'b1;
+        ctrl_fsm_ns      = DECODE;
 
         if (handle_irq) begin
           
@@ -723,6 +731,7 @@ module ibex_controller #(
               exc_pc_mux_o = EXC_PC_IRQ;
             end else begin
               exc_pc_mux_o = EXC_PC_IRQ_CLIC;
+              ctrl_fsm_ns = LOAD_VTABLE_ENTRY;
             end
 
             // Explicit seperation of CLINT and CLIC interrupt sources
@@ -746,8 +755,24 @@ module ibex_controller #(
         irq_ack_o         = 1'b1;    
         irq_id_o          = irq_id_ctrl_i;  
 
-        ctrl_fsm_ns = DECODE;
       end
+
+
+      LOAD_VTABLE_ENTRY: begin
+        pc_mux_o          = PC_EXC; 
+        retain_id         = 1'b1;      // Halt id-stage
+        mask_illegal_inst = 1'b1;      // Mask the illegal_instr signal raised by the compressed_decoder
+                                       // RISC-V is a low density ISA => illegal instr highly likely
+        
+        ctrl_fsm_ns   = LOAD_VTABLE_ENTRY;
+
+        if(if_instr_valid_i) begin 
+          pc_set_o         = 1'b1;
+          exc_pc_mux_o     = EXC_PC_VTABLE;
+          ctrl_fsm_ns      = DECODE;
+        end 
+      end //LOAD_VTABLE_ENTRY
+
 
       DBG_TAKEN_IF: begin
         pc_mux_o     = PC_EXC;
