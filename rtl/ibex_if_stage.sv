@@ -92,6 +92,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   output logic [31:0]                 pc_id_o,
   input  logic                        pmp_err_if_i,
   input  logic                        pmp_err_if_plus2_i,
+  output logic                        if_instr_valid_o,
 
   // control signals
   input  logic                        instr_valid_clear_i,      // clear instr valid bit in IF-ID
@@ -110,6 +111,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   input  logic                        icache_enable_i,
   input  logic                        icache_inval_i,
   output logic                        icache_ecc_error_o,
+  input  logic                        mask_illegal_inst_i,       // To avoid a potential illegal_instr trap caused by the fetched vtable entry
 
   // jump and branch target
   input  logic [31:0]                 branch_target_ex_i,       // branch/jump target address
@@ -190,6 +192,8 @@ module ibex_if_stage import ibex_pkg::*; #(
 
   logic        [31:0] clic_vtable_entry_addr;
 
+  logic               masked_illegal_c_insn;
+
   assign unused_boot_addr = boot_addr_i[7:0];
   assign unused_csr_mtvec = csr_mtvec_i[7:0];
 
@@ -213,6 +217,7 @@ module ibex_if_stage import ibex_pkg::*; #(
       EXC_PC_DBG_EXC: exc_pc = DmExceptionAddr;
       EXC_PC_IRQ_CLIC:exc_pc = (CLIC && CLIC_SHV && irq_shv_i ) ? clic_vtable_entry_addr : { csr_mtvec_i[31:6], 6'b0};                                                                        // Abdesattar: todo CLIC mode fetch vector table entry (i.e mtvt<<6+4*excode) as an instruction
                                                                                                                           // Abdesattar: todo CLIC mode set pc to the previouvly fetched table entry
+      EXC_PC_VTABLE:  exc_pc = if_instr_rdata & 32'hfffffffc;        // .4bytes aligned
       default:        exc_pc = { csr_mtvec_i[31:8], 8'h00                };   // Abdesattar: Basic mode by default
     endcase
   end
@@ -438,6 +443,8 @@ module ibex_if_stage import ibex_pkg::*; #(
     .illegal_instr_o(illegal_c_insn)
   );
 
+  assign masked_illegal_c_insn = illegal_c_insn & ~mask_illegal_inst_i;
+
   // Dummy instruction insertion
   if (DummyInstructions) begin : gen_dummy_instr
     // SEC_CM: CTRL_FLOW.UNPREDICTABLE
@@ -463,7 +470,7 @@ module ibex_if_stage import ibex_pkg::*; #(
     // Mux between actual instructions and dummy instructions
     assign instr_out               = insert_dummy_instr ? dummy_instr_data : instr_decompressed;
     assign instr_is_compressed_out = insert_dummy_instr ? 1'b0 : instr_is_compressed;
-    assign illegal_c_instr_out     = insert_dummy_instr ? 1'b0 : illegal_c_insn;
+    assign illegal_c_instr_out     = insert_dummy_instr ? 1'b0 : masked_illegal_c_insn;
     assign instr_err_out           = insert_dummy_instr ? 1'b0 : if_instr_err;
 
     // Stall the IF stage if we insert a dummy instruction. The dummy will execute between whatever
@@ -492,7 +499,7 @@ module ibex_if_stage import ibex_pkg::*; #(
     assign unused_dummy_seed       = dummy_instr_seed_i;
     assign instr_out               = instr_decompressed;
     assign instr_is_compressed_out = instr_is_compressed;
-    assign illegal_c_instr_out     = illegal_c_insn;
+    assign illegal_c_instr_out     = masked_illegal_c_insn;
     assign instr_err_out           = if_instr_err;
     assign stall_dummy_instr       = 1'b0;
     assign dummy_instr_id_o        = 1'b0;
@@ -503,7 +510,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   // Valid is held until it is explicitly cleared (due to an instruction completing or an exception)
   assign instr_valid_id_d = (if_instr_valid & id_in_ready_i & ~pc_set_i) |
                             (instr_valid_id_q & ~instr_valid_clear_i);
-  assign instr_new_id_d   = if_instr_valid & id_in_ready_i;
+  assign instr_new_id_d   = if_instr_valid & id_in_ready_i;                
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -520,7 +527,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   assign instr_new_id_o   = instr_new_id_q;
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
-  assign if_id_pipe_reg_we = instr_new_id_d;
+  assign if_id_pipe_reg_we = instr_new_id_d;                              
 
   if (ResetAll) begin : g_instr_rdata_ra
     always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -686,6 +693,7 @@ module ibex_if_stage import ibex_pkg::*; #(
     assign if_instr_rdata   = instr_skid_valid_q ? instr_skid_data_q : fetch_rdata;
     assign if_instr_addr    = instr_skid_valid_q ? instr_skid_addr_q : fetch_addr;
 
+
     // Don't branch predict on instruction error so only instructions without errors end up in the
     // skid buffer.
     assign if_instr_bus_err = ~instr_skid_valid_q & fetch_err;
@@ -696,7 +704,7 @@ module ibex_if_stage import ibex_pkg::*; #(
     assign instr_bp_taken_o = instr_bp_taken_q;
 
     `ASSERT(NoPredictSkid, instr_skid_valid_q |-> ~predict_branch_taken)
-    `ASSERT(NoPredictIllegal, predict_branch_taken |-> ~illegal_c_insn)
+    `ASSERT(NoPredictIllegal, predict_branch_taken |-> ~masked_illegal_c_insn)
   end else begin : g_no_branch_predictor
     assign instr_bp_taken_o     = 1'b0;
     assign predict_branch_taken = 1'b0;
@@ -708,6 +716,8 @@ module ibex_if_stage import ibex_pkg::*; #(
     assign if_instr_bus_err = fetch_err;
     assign fetch_ready = id_in_ready_i & ~stall_dummy_instr;
   end
+
+assign if_instr_valid_o = if_instr_valid;
 
   //////////
   // FCOV //
