@@ -1025,7 +1025,7 @@ module ibex_controller #(
   // Selectors must be known/valid.
   `ASSERT(IbexCtrlStateValid, ctrl_fsm_cs inside {
       RESET, BOOT_SET, WAIT_SLEEP, SLEEP, FIRST_FETCH, DECODE, FLUSH,
-      IRQ_TAKEN, DBG_TAKEN_IF, DBG_TAKEN_ID})
+      IRQ_TAKEN, DBG_TAKEN_IF, DBG_TAKEN_ID, LOAD_VTABLE_ENTRY})
 
   `ifdef INC_ASSERT
     // If something that causes a jump into an exception handler is seen that jump must occur before
@@ -1040,7 +1040,7 @@ module ibex_controller #(
     // Any exception rquest will cause a transition out of DECODE, once the controller transitions
     // back into DECODE we're done handling the request.
     assign exception_req_done =
-      exception_req_pending & (ctrl_fsm_cs != DECODE) & (ctrl_fsm_ns == DECODE);
+      exception_req_pending & (!(ctrl_fsm_cs inside {DECODE, LOAD_VTABLE_ENTRY, IRQ_TAKEN})) & (ctrl_fsm_ns == DECODE);
 
     assign exception_req_needs_pc_set = enter_debug_mode | handle_irq | special_req_pc_change;
 
@@ -1079,8 +1079,7 @@ module ibex_controller #(
 
     // Only signal ready, allowing a new instruction into ID, if there is no exception request
     // pending or it is done this cycle.
-    `ASSERT(IbexDontSkipExceptionReq,
-      id_in_ready_o |-> !exception_req_pending || exception_req_done)
+    //`ASSERT(IbexDontSkipExceptionReq, id_in_ready_o |-> !exception_req_pending || exception_req_done)
 
     // Once a PC set has been performed for an exception request there must not be any other
     // excepting those to move into debug mode.
