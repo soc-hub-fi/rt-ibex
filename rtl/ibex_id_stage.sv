@@ -63,7 +63,9 @@ module ibex_id_stage #(
   input  logic                      illegal_c_insn_i,
   input  logic                      instr_fetch_err_i,
   input  logic                      instr_fetch_err_plus2_i,
+  output logic                      mask_illegal_inst_o,
 
+  input  logic                      if_instr_valid_i,
   input  logic [31:0]               pc_id_i,
 
   // Stalls
@@ -691,6 +693,8 @@ module ibex_id_stage #(
     .id_in_ready_o      (id_in_ready_o),
     .controller_run_o   (controller_run),
     .instr_exec_i       (instr_exec_i),
+    .mask_illegal_inst_o(mask_illegal_inst_o),
+    .if_instr_valid_i   (if_instr_valid_i),
 
     // to prefetcher
     .instr_req_o           (instr_req_o),
