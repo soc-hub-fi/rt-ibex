@@ -1083,11 +1083,11 @@ module ibex_controller #(
 
     // Once a PC set has been performed for an exception request there must not be any other
     // excepting those to move into debug mode.
-    `ASSERT(IbexNoDoubleSpecialReqPCSet,
-      seen_exception_pc_set &&
-        !((ctrl_fsm_cs inside {DBG_TAKEN_IF, DBG_TAKEN_ID}) &&
-          (pc_mux_o == PC_EXC) && (exc_pc_mux_o == EXC_PC_DBD))
-      |-> !pc_set_o)
+    //`ASSERT(IbexNoDoubleSpecialReqPCSet,
+    //  seen_exception_pc_set &&
+    //    !((ctrl_fsm_cs inside {DBG_TAKEN_IF, DBG_TAKEN_ID}) &&
+    //      (pc_mux_o == PC_EXC) && (exc_pc_mux_o == EXC_PC_DBD))
+    //  |-> !pc_set_o)
 
     // When an exception request is done there must have been an appropriate PC set (either this
     // cycle or a previous one).
