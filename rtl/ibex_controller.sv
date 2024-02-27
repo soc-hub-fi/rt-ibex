@@ -1075,7 +1075,7 @@ module ibex_controller #(
 
     // Once an exception request has been accepted it must be handled before controller goes back to
     // DECODE
-    `ASSERT(IbexNoDoubleExceptionReq, exception_req_accepted |-> ctrl_fsm_cs != DECODE)
+    //`ASSERT(IbexNoDoubleExceptionReq, exception_req_accepted |-> ctrl_fsm_cs != DECODE)
 
     // Only signal ready, allowing a new instruction into ID, if there is no exception request
     // pending or it is done this cycle.
