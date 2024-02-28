@@ -738,7 +738,7 @@ module ibex_controller #(
             if (ibex_irqs_i.irq_external) begin
               exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd11};
             end else if (ibex_irqs_i.irq_software) begin
-              exc_cause_o = '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd03};
+              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd03};
             end else if(ibex_irqs_i.irq_timer)begin // irqs_i.irq_timer
               exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd07}; 
             end else begin
