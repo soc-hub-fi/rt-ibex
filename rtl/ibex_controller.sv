@@ -53,6 +53,7 @@ module ibex_controller #(
                                                          // stage stops accepting instructions from
                                                          // IF
   output logic                  mask_illegal_inst_o,     // To avoid a potential illegal_instr trap caused by the fetched vtable entry
+  output logic                  abort_o,
 
   // to prefetcher
   output logic                  instr_req_o,             // start fetching instructions
@@ -189,6 +190,8 @@ module ibex_controller #(
 
   logic [11:0] clic_exccode;
   logic mask_illegal_inst;
+
+  logic abort;
 
 `ifndef SYNTHESIS
   // synopsys translate_off
@@ -525,6 +528,8 @@ module ibex_controller #(
     controller_run_o       = 1'b0;
     mask_illegal_inst      = 1'b0;
 
+    abort_o                = 1'b0;
+
     unique case (ctrl_fsm_cs)
       RESET: begin
         instr_req_o   = 1'b0;
@@ -662,8 +667,8 @@ module ibex_controller #(
           halt_if = 1'b1;
         end
 
-        if (!stall && !special_req && !id_wb_pending) begin
-          if (enter_debug_mode) begin
+        if (!special_req && !id_wb_pending) begin
+          if (enter_debug_mode && !stall) begin
             // enter debug mode
             ctrl_fsm_ns = DBG_TAKEN_IF;
             // Halt IF only for now, ID will be flushed in DBG_TAKEN_IF as the
@@ -677,6 +682,7 @@ module ibex_controller #(
             // to the handler, but don't set flush_id: we must allow this
             // instruction to complete (since it might have outstanding loads
             // or stores).
+            abort_o           = 1'b1;
             halt_if           = 1'b1;
             pc_set_o          = 1'b1;
             pc_mux_o          = PC_EXC;
@@ -689,7 +695,7 @@ module ibex_controller #(
             // csr_save_cause_o  = 1'b1; 
             // csr_cause_o       = {1'b1,irq_id_ctrl_i};
             // csr_irq_level_o   = irq_level_ctrl_i;
-            csr_save_if_o     = 1'b1;    // Abdesattar: Saving pc to csr_mepc should be performed here (while IF stage is halted) 
+            csr_save_id_o     = 1'b1;    // Abdesattar: Saving pc to csr_mepc should be performed here (while IF stage is halted) 
           end
         end
 
@@ -701,6 +707,7 @@ module ibex_controller #(
         ctrl_fsm_ns      = DECODE;
 
         if (handle_irq) begin
+          abort_o           = 1'b1;
           
 
           //csr_save_if_o    = 1'b1;
