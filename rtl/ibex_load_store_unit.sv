@@ -58,6 +58,8 @@ module ibex_load_store_unit #(
 
   output logic         lsu_resp_valid_o,     // LSU has response from transaction -> to ID/EX
 
+  input  logic         abandon_i,
+
   // exception signals
   output logic         load_err_o,
   output logic         load_resp_intg_err_o,
@@ -408,7 +410,9 @@ module ibex_load_store_unit #(
         // external request and so a data_gnt_i might never be signalled. The registered version
         // pmp_err_q is only updated for new address phases and so can be used in WAIT_GNT* and
         // WAIT_RVALID* states
-        if (data_gnt_i || pmp_err_q) begin
+        if(abandon_i) begin 
+          ls_fsm_ns           = IDLE;
+        else if (data_gnt_i || pmp_err_q) begin
           addr_update         = 1'b1;
           ctrl_update         = 1'b1;
           handle_misaligned_d = 1'b1;
@@ -422,8 +426,10 @@ module ibex_load_store_unit #(
         // tell ID/EX stage to update the address
         addr_incr_req_o = 1'b1;
 
+        if(abandon_i) begin 
+          ls_fsm_ns           = IDLE; 
         // first part rvalid is received, or gets a PMP error
-        if (data_rvalid_i || pmp_err_q) begin
+        else if (data_rvalid_i || pmp_err_q) begin
           // Update the PMP error for the second part
           pmp_err_d = data_pmp_err_i;
           // Record the error status of the first part
@@ -450,7 +456,9 @@ module ibex_load_store_unit #(
         // tell ID/EX stage to update the address
         addr_incr_req_o = handle_misaligned_q;
         data_req_o      = 1'b1;
-        if (data_gnt_i || pmp_err_q) begin
+        if(abandon_i) begin 
+          ls_fsm_ns           = IDLE; 
+        else if (data_gnt_i || pmp_err_q) begin
           ctrl_update         = 1'b1;
           // Update the address, unless there was an error
           addr_update         = ~lsu_err_q;
@@ -463,8 +471,11 @@ module ibex_load_store_unit #(
         // tell ID/EX stage to update the address (to make sure the
         // second address can be captured correctly for mtval and PMP checking)
         addr_incr_req_o = 1'b1;
+
+        if(abandon_i) begin 
+          ls_fsm_ns           = IDLE; 
         // Wait for the first rvalid, second request is already granted
-        if (data_rvalid_i) begin
+        else if (data_rvalid_i) begin
           // Update the pmp error for the second part
           pmp_err_d = data_pmp_err_i;
           // The first part cannot see a PMP error in this state
@@ -484,7 +495,7 @@ module ibex_load_store_unit #(
     endcase
   end
 
-  assign lsu_req_done_o = (lsu_req_i | (ls_fsm_cs != IDLE)) & (ls_fsm_ns == IDLE);
+  assign lsu_req_done_o = (lsu_req_i | (ls_fsm_cs != IDLE)) & (ls_fsm_ns == IDLE);   
 
   // registers for FSM
   always_ff @(posedge clk_i or negedge rst_ni) begin
