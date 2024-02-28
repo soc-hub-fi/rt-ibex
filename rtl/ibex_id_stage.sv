@@ -201,6 +201,7 @@ module ibex_id_stage #(
   input logic                       ready_wb_i,
   input logic                       outstanding_load_wb_i,
   input logic                       outstanding_store_wb_i,
+  output logic                      abort_o,
 
   // Performance Counters
   output logic                      perf_jump_o,    // executing a jump instr
@@ -318,6 +319,8 @@ module ibex_id_stage #(
   logic [31:0] alu_operand_b;
 
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl;
+
+  logic abort_i;
 
   assign irq_id_ctrl_o = irq_id_ctrl;
 
@@ -687,6 +690,7 @@ module ibex_id_stage #(
     .instr_fetch_err_i      (instr_fetch_err_i),
     .instr_fetch_err_plus2_i(instr_fetch_err_plus2_i),
     .pc_id_i                (pc_id_i),
+    .abort_o                (abort),
 
     // to IF-ID pipeline
     .instr_valid_clear_o(instr_valid_clear_o),
@@ -798,6 +802,8 @@ module ibex_id_stage #(
   assign multdiv_signed_mode_ex_o    = multdiv_signed_mode;
   assign multdiv_operand_a_ex_o      = rf_rdata_a_fwd;
   assign multdiv_operand_b_ex_o      = rf_rdata_b_fwd;
+
+  assign abort_o                     = abort;
 
   ////////////////////////
   // Branch set control //
@@ -983,10 +989,10 @@ module ibex_id_stage #(
 
         MULTI_CYCLE: begin
           if(multdiv_en_dec) begin
-            rf_we_raw       = rf_we_dec & ex_valid_i & ~abandon_i;
+            rf_we_raw       = rf_we_dec & ex_valid_i & ~abort;
           end
 
-          if ((multicycle_done & ready_wb_i) | abandon_i) begin
+          if ((multicycle_done & ready_wb_i) | abort) begin
             id_fsm_d        = FIRST_CYCLE;
           end else begin
             stall_multdiv   = multdiv_en_dec;
@@ -1040,7 +1046,7 @@ module ibex_id_stage #(
 
     logic instr_kill;
 
-    assign multicycle_done = lsu_req_dec ? ~stall_mem : ex_valid_i;
+    assign multicycle_done = lsu_req_dec ? ~stall_mem : ex_valid_i;     
 
     // Is a memory access ongoing that isn't finishing this cycle
     assign outstanding_memory_access = (outstanding_load_wb_i | outstanding_store_wb_i) &
@@ -1141,7 +1147,7 @@ module ibex_id_stage #(
                                (outstanding_memory_access | stall_ld_hz);
   end else begin : gen_no_stall_mem
 
-    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : ex_valid_i;
+    assign multicycle_done = lsu_req_dec ? lsu_resp_valid_i : ex_valid_i;     // Abdesattar : Useful!
 
     assign data_req_allowed = instr_first_cycle;
 
