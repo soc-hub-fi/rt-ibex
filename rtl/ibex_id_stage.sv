@@ -983,10 +983,10 @@ module ibex_id_stage #(
 
         MULTI_CYCLE: begin
           if(multdiv_en_dec) begin
-            rf_we_raw       = rf_we_dec & ex_valid_i;
+            rf_we_raw       = rf_we_dec & ex_valid_i & ~abandon_i;
           end
 
-          if (multicycle_done & ready_wb_i) begin
+          if ((multicycle_done & ready_wb_i) | abandon_i) begin
             id_fsm_d        = FIRST_CYCLE;
           end else begin
             stall_multdiv   = multdiv_en_dec;
