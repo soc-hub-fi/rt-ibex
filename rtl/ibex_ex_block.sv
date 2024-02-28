@@ -50,7 +50,8 @@ module ibex_ex_block #(
   output logic [31:0]           branch_target_o,       // to IF
   output logic                  branch_decision_o,     // to ID
 
-  output logic                  ex_valid_o             // EX has valid output
+  output logic                  ex_valid_o,            // EX has valid output
+  input  logic                  abort_i
 );
 
   import ibex_pkg::*;

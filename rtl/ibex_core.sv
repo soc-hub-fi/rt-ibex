@@ -410,6 +410,8 @@ module ibex_core import ibex_pkg::*; #(
   // for RVFI
   logic        illegal_insn_id, unused_illegal_insn_id; // ID stage sees an illegal instruction
 
+  logic        abort;
+
   assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
     ? exc_cause.cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
 
@@ -767,6 +769,7 @@ module ibex_core import ibex_pkg::*; #(
     .ready_wb_i            (ready_wb),
     .outstanding_load_wb_i (outstanding_load_wb),
     .outstanding_store_wb_i(outstanding_store_wb),
+    .abort_o               (abort),
 
     // Performance Counters
     .perf_jump_o      (perf_jump),
@@ -823,7 +826,8 @@ module ibex_core import ibex_pkg::*; #(
     .branch_target_o  (branch_target_ex),  // to IF
     .branch_decision_o(branch_decision),  // to ID
 
-    .ex_valid_o(ex_valid)
+    .ex_valid_o(ex_valid), 
+    .abort_i(abort)
   );
 
   /////////////////////
@@ -871,6 +875,7 @@ module ibex_core import ibex_pkg::*; #(
 
 
     .lsu_resp_valid_o(lsu_resp_valid),
+    .abort_i         (abort),
 
     // exception signals
     .load_err_o           (lsu_load_err),

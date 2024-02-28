@@ -667,8 +667,8 @@ module ibex_controller #(
           halt_if = 1'b1;
         end
 
-        if (!special_req && !id_wb_pending) begin
-          if (enter_debug_mode && !stall) begin
+        if (!special_req) begin
+          if (enter_debug_mode && !stall && !id_wb_pending) begin
             // enter debug mode
             ctrl_fsm_ns = DBG_TAKEN_IF;
             // Halt IF only for now, ID will be flushed in DBG_TAKEN_IF as the
