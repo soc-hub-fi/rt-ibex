@@ -211,7 +211,7 @@ module ibex_id_stage #(
                                                         // access to finish before proceeding
   output logic                      perf_mul_wait_o,
   output logic                      perf_div_wait_o,
-  output logic                      instr_id_done_o
+  output logic                      instr_id_done_o   
 );
 
   import ibex_pkg::*;
@@ -252,6 +252,7 @@ module ibex_id_stage #(
   logic        stall_wb;
   logic        flush_id;
   logic        multicycle_done;
+  logic        single_cycle; 
 
   logic        mem_resp_intg_err;
 
@@ -699,6 +700,7 @@ module ibex_id_stage #(
     .instr_exec_i       (instr_exec_i),
     .mask_illegal_inst_o(mask_illegal_inst_o),
     .if_instr_valid_i   (if_instr_valid_i),
+    .single_cycle_i     (single_cycle),
 
     // to prefetcher
     .instr_req_o           (instr_req_o),
@@ -929,7 +931,7 @@ module ibex_id_stage #(
     jump_set_raw            = 1'b0;
     perf_branch_o           = 1'b0;
 
-    if (instr_executing_spec | abort) begin
+    if (instr_executing_spec) begin
       unique case (id_fsm_q)
         FIRST_CYCLE: begin
           unique case (1'b1)
@@ -989,10 +991,10 @@ module ibex_id_stage #(
 
         MULTI_CYCLE: begin
           if(multdiv_en_dec) begin
-            rf_we_raw       = rf_we_dec & ex_valid_i & ~abort;
+            rf_we_raw       = rf_we_dec & ex_valid_i;
           end
 
-          if ((multicycle_done & ready_wb_i) | abort) begin
+          if ((multicycle_done & ready_wb_i)) begin
             id_fsm_d        = FIRST_CYCLE;
           end else begin
             stall_multdiv   = multdiv_en_dec;
@@ -1010,6 +1012,8 @@ module ibex_id_stage #(
 
   // Note for the two-stage configuration ready_wb_i is always set
   assign multdiv_ready_id_o = ready_wb_i;
+
+  assign single_cycle    = (id_fsm_d == FIRST_CYCLE);
 
   `ASSERT(StallIDIfMulticycle, (id_fsm_q == FIRST_CYCLE) & (id_fsm_d == MULTI_CYCLE) |-> stall_id)
 
