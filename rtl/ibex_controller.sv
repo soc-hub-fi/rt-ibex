@@ -528,7 +528,7 @@ module ibex_controller #(
     controller_run_o       = 1'b0;
     mask_illegal_inst      = 1'b0;
 
-    abort_o                = 1'b0;
+    abort                  = 1'b0;
 
     unique case (ctrl_fsm_cs)
       RESET: begin
@@ -682,7 +682,7 @@ module ibex_controller #(
             // to the handler, but don't set flush_id: we must allow this
             // instruction to complete (since it might have outstanding loads
             // or stores).
-            abort_o           = 1'b1;
+            abort             = 1'b1;
             halt_if           = 1'b1;
             pc_set_o          = 1'b1;
             pc_mux_o          = PC_EXC;
@@ -707,7 +707,7 @@ module ibex_controller #(
         ctrl_fsm_ns      = DECODE;
 
         if (handle_irq) begin
-          abort_o           = 1'b1;
+          abort             = 1'b1;
           
 
           //csr_save_if_o    = 1'b1;
@@ -964,6 +964,15 @@ module ibex_controller #(
   // Stall control //
   ///////////////////
 
+  // Abort is registered to avoid comb loop nets between id and controller 
+  always_ff @(posedge clk_i or negedge rst_ni) begin : update_abort
+    if (!rst_ni) begin
+      abort_o  <= 1'b0;
+    end else begin
+      abort_o  <= abort;             
+    end
+  end
+
   // If high current instruction cannot complete this cycle. Either because it needs more cycles to
   // finish (stall_id_i) or because the writeback stage cannot accept it yet (stall_wb_i). If there
   // is no writeback stage stall_wb_i is a constant 0.
@@ -1004,8 +1013,8 @@ module ibex_controller #(
     end
   end
 
-  //`ASSERT(PipeEmptyOnIrq, ctrl_fsm_cs != IRQ_TAKEN & ctrl_fsm_ns == IRQ_TAKEN |->
-  //  ~instr_valid_i & ready_wb_i)
+  `ASSERT(PipeEmptyOnIrq, ctrl_fsm_cs != IRQ_TAKEN & ctrl_fsm_ns == IRQ_TAKEN |->
+    ~instr_valid_i & ready_wb_i)
 
   //////////
   // FCOV //
