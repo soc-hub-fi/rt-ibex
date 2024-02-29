@@ -43,6 +43,8 @@ module ibex_controller #(
   input  logic                  instr_fetch_err_plus2_i, // instr error is x32
   input  logic [31:0]           pc_id_i,                 // instr address
   input  logic                  if_instr_valid_i,        // Valid instruction (to identify vtable entry after prefetch_unit invalidation)
+  input  logic                  single_cycle_i,           // Does the instruction complete in this/next clock cycle?
+
 
   // to IF-ID pipeline stage
   output logic                  instr_valid_clear_o,     // kill instr in IF-ID reg
@@ -695,7 +697,8 @@ module ibex_controller #(
             // csr_save_cause_o  = 1'b1; 
             // csr_cause_o       = {1'b1,irq_id_ctrl_i};
             // csr_irq_level_o   = irq_level_ctrl_i;
-            csr_save_id_o     = 1'b1;    // Abdesattar: Saving pc to csr_mepc should be performed here (while IF stage is halted) 
+            csr_save_id_o     = single_cycle_i ? 1'b0 : 1'b1;    // Abdesattar: Saving pc to csr_mepc should be performed here (while IF stage is halted) 
+            csr_save_if_o     = single_cycle_i ? 1'b1 : 1'b0;
           end
         end
 
@@ -705,6 +708,7 @@ module ibex_controller #(
         pc_mux_o         = PC_EXC;
         pc_set_o         = 1'b1;
         ctrl_fsm_ns      = DECODE;
+        flush_id         = 1'b1;
 
         if (handle_irq) begin
           abort             = 1'b1;
