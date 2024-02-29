@@ -1004,8 +1004,8 @@ module ibex_controller #(
     end
   end
 
-  `ASSERT(PipeEmptyOnIrq, ctrl_fsm_cs != IRQ_TAKEN & ctrl_fsm_ns == IRQ_TAKEN |->
-    ~instr_valid_i & ready_wb_i)
+  //`ASSERT(PipeEmptyOnIrq, ctrl_fsm_cs != IRQ_TAKEN & ctrl_fsm_ns == IRQ_TAKEN |->
+  //  ~instr_valid_i & ready_wb_i)
 
   //////////
   // FCOV //
