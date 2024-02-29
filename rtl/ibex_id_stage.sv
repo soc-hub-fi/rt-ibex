@@ -320,7 +320,7 @@ module ibex_id_stage #(
 
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl;
 
-  logic abort_i;
+  logic abort;
 
   assign irq_id_ctrl_o = irq_id_ctrl;
 
@@ -929,7 +929,7 @@ module ibex_id_stage #(
     jump_set_raw            = 1'b0;
     perf_branch_o           = 1'b0;
 
-    if (instr_executing_spec) begin
+    if (instr_executing_spec | abort) begin
       unique case (id_fsm_q)
         FIRST_CYCLE: begin
           unique case (1'b1)
