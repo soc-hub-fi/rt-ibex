@@ -395,7 +395,9 @@ module ibex_cs_registers #(
   assign m_irq_enable_o = mstatus_q.mie && !(dcsr_q.step && !dcsr_q.stepie);
   assign mie_bypass_o = ((csr_addr_i == CSR_MIE) && csr_mie_we) ? csr_mie_wdata & IRQ_MASK : mie_q;
   assign mintthresh_o = mintthresh_q;
-  assign priv_lvl_o   = priv_lvl_q;
+
+  // Only support machine mode
+  assign priv_lvl_o   = PRIV_LVL_M;
   assign irq_id_instant_d = irq_id_instant_i;
 
 
@@ -786,7 +788,7 @@ module ibex_cs_registers #(
           };
           // Convert illegal values to U-mode
           if ((mstatus_d.mpp != PRIV_LVL_M) && (mstatus_d.mpp != PRIV_LVL_U)) begin
-            mstatus_d.mpp = PRIV_LVL_U;
+            mstatus_d.mpp = PRIV_LVL_M;
             //$fatal("PRIVELAGE TO USER MODE!?");
           end
         end
@@ -843,7 +845,7 @@ module ibex_cs_registers #(
           dcsr_d.xdebugver = XDEBUGVER_STD;
           // Change to PRIV_LVL_U if software writes an unsupported value
           if ((dcsr_d.prv != PRIV_LVL_M) && (dcsr_d.prv != PRIV_LVL_U)) begin
-            dcsr_d.prv = PRIV_LVL_U;
+            dcsr_d.prv = PRIV_LVL_M;
           end
 
           // Read-only for SW
@@ -974,11 +976,11 @@ module ibex_cs_registers #(
       end // csr_save_cause_i
 
       csr_restore_dret_i: begin // DRET
-        priv_lvl_d = dcsr_q.prv;
+        priv_lvl_d = PRIV_LVL_M; //dcsr_q.prv;
       end // csr_restore_dret_i
 
       csr_restore_mret_i: begin // MRET
-        priv_lvl_d     = mstatus_q.mpp;
+        priv_lvl_d     = PRIV_LVL_M; //mstatus_q.mpp;
         mstatus_en     = 1'b1;
         mstatus_d.mie  = mstatus_q.mpie; // re-enable interrupts
 
@@ -1016,14 +1018,15 @@ module ibex_cs_registers #(
     endcase
   end
 
-  // Update current priv level
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      priv_lvl_q     <= PRIV_LVL_M;
-    end else begin
-      priv_lvl_q     <= priv_lvl_d;
-    end
-  end
+  //// Update current priv level
+  //always_ff @(posedge clk_i or negedge rst_ni) begin
+  //  if (!rst_ni) begin
+  //    priv_lvl_q     <= PRIV_LVL_M;
+  //  end else begin
+  //    priv_lvl_q     <= priv_lvl_d;
+  //  end
+  //end
+  assign priv_lvl_q = PRIV_LVL_M;
 
   // Send current priv level to the decoder
   assign priv_mode_id_o = priv_lvl_q;
