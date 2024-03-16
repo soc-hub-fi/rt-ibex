@@ -1,9 +1,16 @@
-[Ibex OpenTitan configuration Nightly Regression](https://ibex.reports.lowrisc.org/opentitan/latest/report.html)
-<a href="https://ibex.reports.lowrisc.org/opentitan/latest/report.html">
-  <img src="https://ibex.reports.lowrisc.org/opentitan/latest/summary.svg">
-</a>
+# RT-Ibex RISC-V Core
 
-# Ibex RISC-V Core
+RT-Ibex is an experimental fork of the original Ibex, developed at Tampere University. RT-Ibex was created to provide support for the core-local interrupt controller (CLIC) RISC-V extension.
+
+## Disclaimer
+While we have attempted to keep our modifications unintrusive, we cannot guarantee complete backwards compatibility with the original Ibex. 
+
+## Contributing
+
+As RT-Ibex is still in an experimental state and under internal development, we do currently not take external contributions.
+
+
+# Original Ibex RISC-V Core
 
 Ibex is a production-quality open source 32-bit RISC-V CPU core written in
 SystemVerilog. The CPU core is heavily parametrizable and well suited for
@@ -68,40 +75,7 @@ In particular it includes a integration of the [PULP RISC-V debug module](https:
 It targets the [Arty A7 FPGA board from Digilent](https://digilent.com/shop/arty-a7-artix-7-fpga-development-board/) and supports debugging via OpenOCD and GDB over USB (no external JTAG probe required).
 The Ibex Demo System is maintained by lowRISC but is not an official part of Ibex.
 
-## Contributing
 
-We highly appreciate community contributions. To ease our work of reviewing your contributions,
-please:
-
-* Create your own branch to commit your changes and then open a Pull Request.
-* Split large contributions into smaller commits addressing individual changes or bug fixes. Do not
-  mix unrelated changes into the same commit!
-* Write meaningful commit messages. For more information, please check out the [contribution
-  guide](https://github.com/lowrisc/ibex/blob/master/CONTRIBUTING.md).
-* If asked to modify your changes, do fixup your commits and rebase your branch to maintain a
-  clean history.
-
-When contributing SystemVerilog source code, please try to be consistent and adhere to [our Verilog
-coding style guide](https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md).
-
-When contributing C or C++ source code, please try to adhere to [the OpenTitan C++ coding style
-guide](https://docs.opentitan.org/doc/rm/c_cpp_coding_style/).
-All C and C++ code should be formatted with clang-format before committing.
-Either run `clang-format -i filename.cc` or `git clang-format` on added files.
-
-To get started, please check out the ["Good First Issue"
- list](https://github.com/lowrisc/ibex/issues?q=is%3Aissue+is%3Aopen+label%3A%22Good+First+Issue%22).
-
-## Issues and Troubleshooting
-
-If you find any problems or issues with Ibex or the documentation, please check out the [issue
- tracker](https://github.com/lowrisc/ibex/issues) and create a new issue if your problem is
-not yet tracked.
-
-## Questions?
-
-Do not hesitate to contact us, e.g., on our public [Ibex channel on
-Zulip](https://lowrisc.zulipchat.com/#narrow/stream/198227-ibex)!
 
 ## License
 
