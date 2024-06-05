@@ -16,7 +16,8 @@ module ibex_register_file_ff #(
   parameter bit                   DummyInstructions = 0,
   parameter bit                   WrenCheck         = 0,
   parameter bit                   RdataMuxCheck     = 0,
-  parameter logic [DataWidth-1:0] WordZeroVal       = '0
+  parameter logic [DataWidth-1:0] WordZeroVal       = '0,
+  localparam int unsigned         CxIfWidth         = 32 * 15
 ) (
   // Clock and Reset
   input  logic                 clk_i,
@@ -39,6 +40,9 @@ module ibex_register_file_ff #(
   input  logic [4:0]           waddr_a_i,
   input  logic [DataWidth-1:0] wdata_a_i,
   input  logic                 we_a_i,
+
+  input  logic [CxIfWidth-1:0] cx_restore_i,
+  output logic [CxIfWidth-1:0] cx_store_o
 
   // This indicates whether spurious WE or non-one-hot encoded raddr are detected.
   output logic                 err_o
