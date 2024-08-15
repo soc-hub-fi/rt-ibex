@@ -69,7 +69,14 @@ module ibex_load_store_unit #(
   output logic         busy_o,
 
   output logic         perf_load_o,
-  output logic         perf_store_o
+  output logic         perf_store_o, 
+
+  // CSR registers signals for HW Stacking  
+  input  logic [31:0]  csr_mepc_i, 
+  input  logic [31:0]  csr_mcause_i,
+
+  // Data select 
+  input  logic [1:0]   data_select_i
 );
 
   logic [31:0]  data_addr;
@@ -89,6 +96,7 @@ module ibex_load_store_unit #(
 
   logic [3:0]   data_be;
   logic [31:0]  data_wdata;
+  logic [31:0]  selected_data_wdata;
 
   logic [31:0]  data_rdata_ext;
 
@@ -168,6 +176,21 @@ module ibex_load_store_unit #(
     endcase // case (lsu_type_i)
   end
 
+
+  /////////////////////
+  // wdata selection //
+  ///////////////////// 
+
+  // select data to be stored between CSR/REG_FILE
+  // CSR registers are stored into the stack in hw_stacking mode
+  always_comb begin
+    unique case (data_select_i)
+      2'b01:   selected_data_wdata = csr_mepc_i;
+      2'b10:   selected_data_wdata = csr_mcause_i;
+      default: selected_data_wdata = lsu_wdata_i;
+    endcase // case (data_select_i)
+  end
+
   /////////////////////
   // WData alignment //
   /////////////////////
@@ -176,11 +199,11 @@ module ibex_load_store_unit #(
   // we handle misaligned accesses, half word and byte accesses here
   always_comb begin
     unique case (data_offset)
-      2'b00:   data_wdata =  lsu_wdata_i[31:0];
-      2'b01:   data_wdata = {lsu_wdata_i[23:0], lsu_wdata_i[31:24]};
-      2'b10:   data_wdata = {lsu_wdata_i[15:0], lsu_wdata_i[31:16]};
-      2'b11:   data_wdata = {lsu_wdata_i[ 7:0], lsu_wdata_i[31: 8]};
-      default: data_wdata =  lsu_wdata_i[31:0];
+      2'b00:   data_wdata =  selected_data_wdata[31:0];
+      2'b01:   data_wdata = {selected_data_wdata[23:0], selected_data_wdata[31:24]};
+      2'b10:   data_wdata = {selected_data_wdata[15:0], selected_data_wdata[31:16]};
+      2'b11:   data_wdata = {selected_data_wdata[ 7:0], selected_data_wdata[31: 8]};
+      default: data_wdata =  selected_data_wdata[31:0];
     endcase // case (data_offset)
   end
 

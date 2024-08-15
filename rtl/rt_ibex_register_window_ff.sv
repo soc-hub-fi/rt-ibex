@@ -10,13 +10,15 @@
  * This register file is based on flip flops. Use this register file when
  * targeting FPGA synthesis or Verilator simulation.
  */
-module ibex_register_file_ff #(
+module rt_ibex_register_window_ff #(
   parameter bit                   RV32E             = 0,
   parameter int unsigned          DataWidth         = 32,
   parameter bit                   DummyInstructions = 0,
   parameter bit                   WrenCheck         = 0,
   parameter bit                   RdataMuxCheck     = 0,
-  parameter logic [DataWidth-1:0] WordZeroVal       = '0
+  parameter logic [DataWidth-1:0] WordZeroVal       = '0,
+  parameter int unsigned          NUM_RegisterWindows = 4,
+  parameter int unsigned          WindowSize        = 7
 ) (
   // Clock and Reset
   input  logic                 clk_i,
@@ -41,22 +43,171 @@ module ibex_register_file_ff #(
   input  logic                 we_a_i,
 
   // This indicates whether spurious WE or non-one-hot encoded raddr are detected.
-  output logic                 err_o
+  output logic                 err_o,
+
+  input  logic                 increment_ptr_i,
+  input  logic                 decrement_ptr_i,
+  output logic                 window_full_o,
+  input  logic [31:0]          mcause_i,
+  input  logic [31:0]          mepc_i,
+  output logic [31:0]          mcause_o,
+  output logic [31:0]          mepc_o,
+
+  input  logic                 save_csr_i
 );
 
-  localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
-  localparam int unsigned NUM_WORDS  = 2**ADDR_WIDTH;
+  // localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
+  // localparam int unsigned NUM_WORDS  = 2**ADDR_WIDTH;
+
+  localparam int unsigned BASE_WINDOW_SIZE = RV32E ? 16 : 32;
+  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NUM_RegisterWindows * WindowSize;
+  localparam int unsigned ADDR_WIDTH  = $clog2(NUM_WORDS);
+  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NUM_RegisterWindows);
+
+
+  logic [2*DataWidth-1:0] aux_mem[NUM_RegisterWindows];
+  logic [NUM_RegisterWindows-1:0] aux_we_a_dec;
 
   logic [DataWidth-1:0] rf_reg   [NUM_WORDS];
   logic [NUM_WORDS-1:0] we_a_dec;
 
   logic oh_raddr_a_err, oh_raddr_b_err, oh_we_err;
 
+  // internal addresses
+  logic [ADDR_WIDTH-1:0] raddr_a_int, raddr_b_int, waddr_a_int;
+  
+  logic [ADDR_WIDTH-1:0] window_ptr; 
+  logic [AUX_ADDR_WIDTH-1:0] aux_ptr;
+
+  logic [$clog2(WindowSize)-1:0] offset_ra, offset_rb, offset_w;
+  logic [ADDR_WIDTH-1:0] windowed_raddr_a, windowed_raddr_b, windowed_waddr;
+
+  logic [2*DataWidth-1:0]      aux_mem_q; 
+
+  logic  offset_sel;
+  logic  is_eabi_ra, is_eabi_rb, is_eabi_w;
+  logic  window_full;
+
+  
+  assign window_full_o  = window_full;
+
+  assign window_full    = window_ptr == ((NUM_RegisterWindows-1) * WindowSize);
+
+
+  always_comb begin 
+    is_eabi_ra = 1'b1;
+    case (raddr_a_i)
+      1:  offset_ra = 0; //  x1 : ra
+      5:  offset_ra = 1; //  x5 : t0
+      10: offset_ra = 2; // x10 : a0
+      11: offset_ra = 3; // x11 : a1
+      12: offset_ra = 4; // x12 : a2
+      13: offset_ra = 5; // x13 : a3
+      15: offset_ra = 6; // x15 : t1
+      default: begin 
+        offset_ra = 0; 
+        is_eabi_ra = 1'b0;
+      end 
+    endcase
+  end 
+
+
+  always_comb begin 
+    is_eabi_rb = 1'b1;
+    case (raddr_b_i)
+      1:  offset_rb = 0;  //  x1 : ra
+      5:  offset_rb = 1;  //  x5 : t0
+      10: offset_rb = 2; // x10 : a0
+      11: offset_rb = 3; // x11 : a1
+      12: offset_rb = 4; // x12 : a2
+      13: offset_rb = 5; // x13 : a3
+      15: offset_rb = 6; // x15 : t1
+      default: begin 
+        offset_rb = 0; 
+        is_eabi_rb = 1'b0;
+      end 
+    endcase
+  end 
+
+
+  always_comb begin 
+    is_eabi_w = 1'b1;
+    case (waddr_a_i)
+      1:  offset_w = 0;  //  x1 : ra
+      5:  offset_w = 1;  //  x5 : t0
+      10: offset_w = 2; // x10 : a0
+      11: offset_w = 3; // x11 : a1
+      12: offset_w = 4; // x12 : a2
+      13: offset_w = 5; // x13 : a3
+      15: offset_w = 6; // x15 : t1
+      default: begin 
+        offset_w = 0; 
+        is_eabi_w = 1'b0;
+      end 
+    endcase
+  end 
+
+
+  assign windowed_raddr_a = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_ra;
+  assign windowed_raddr_b = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_rb;
+  assign windowed_waddr   = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_w;
+
+  assign offset_sel  = (window_ptr != 0);
+
+  assign raddr_a_int = (offset_sel && is_eabi_ra) ? windowed_raddr_a : {'0, raddr_a_i[4:0]};
+  assign raddr_b_int = (offset_sel && is_eabi_rb) ? windowed_raddr_b : {'0, raddr_b_i[4:0]};
+  assign waddr_a_int = (offset_sel && is_eabi_w)  ? windowed_waddr   : {'0, waddr_a_i[4:0]};
+
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : window_ptr_
+    if (!rst_ni) begin
+      window_ptr   <= '0;
+    end else begin
+      if (increment_ptr_i) begin
+        if(!(window_ptr == NUM_WORDS-WindowSize)) begin  // window_pointer is NOT pointing to the last window
+          window_ptr <= window_ptr + WindowSize;
+        end 
+      end 
+
+      if(decrement_ptr_i) begin 
+        window_ptr <= window_ptr - WindowSize;
+      end 
+    end 
+  end
+
+
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : aux_ptr_
+    if (!rst_ni) begin
+      aux_ptr   <= '0;
+    end else begin
+      if (increment_ptr_i) begin
+        if(!(aux_ptr == NUM_RegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
+          aux_ptr <= aux_ptr + 1;
+        end 
+      end 
+
+      if(decrement_ptr_i) begin 
+        aux_ptr <= aux_ptr - 1;
+      end 
+    end 
+  end
+
+
+
   always_comb begin : we_a_decoder
     for (int unsigned i = 0; i < NUM_WORDS; i++) begin
-      we_a_dec[i] = (waddr_a_i == 5'(i)) ? we_a_i : 1'b0;
+      we_a_dec[i] = (waddr_a_int == ADDR_WIDTH'(i)) ? we_a_i : 1'b0;
     end
   end
+
+  
+  always_comb begin : aux_we_a_decoder
+    for (int unsigned i = 0; i < NUM_RegisterWindows; i++) begin
+      aux_we_a_dec[i] = (aux_ptr == AUX_ADDR_WIDTH'(i)) ? save_csr_i : 1'b0;
+    end
+  end
+
 
   // SEC_CM: DATA_REG_SW.GLITCH_DETECT
   // This checks for spurious WE strobes on the regfile.
@@ -103,6 +254,23 @@ module ibex_register_file_ff #(
 
     assign rf_reg[i] = rf_reg_q;
   end
+
+    // No flops for R0 as it's hard-wired to 0
+  for (genvar i = 1; i < NUM_RegisterWindows; i++) begin : g_rf_flops_aux
+    logic [2*DataWidth-1:0] aux_rf_reg_q;
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        aux_rf_reg_q <= WordZeroVal;
+      end else if (aux_we_a_dec[i]) begin
+        aux_rf_reg_q <= {mcause_i, mepc_i};
+      end
+    end
+
+    assign aux_mem[i] = aux_rf_reg_q;
+  end
+
+  
 
   // With dummy instructions enabled, R0 behaves as a real register but will always return 0 for
   // real instructions.
@@ -226,16 +394,16 @@ module ibex_register_file_ff #(
       .out_o (rdata_b_o)
     );
   end else begin : gen_no_rdata_mux_check
-    if (RV32E) begin : rv32e_regfile
-      assign rdata_a_o = rf_reg[raddr_a_i[3:0]];
-      assign rdata_b_o = rf_reg[raddr_b_i[3:0]];
-    end else begin : rv32i_regfile
-      assign rdata_a_o = rf_reg[raddr_a_i];
-      assign rdata_b_o = rf_reg[raddr_b_i];
-    end
+    assign rdata_a_o = rf_reg[raddr_a_int];
+    assign rdata_b_o = rf_reg[raddr_b_int];
     assign oh_raddr_a_err = 1'b0;
     assign oh_raddr_b_err = 1'b0;
+
+    assign aux_mem_q = aux_mem[aux_ptr];  
+    assign mcause_o  = aux_mem_q[63:32];
+    assign mepc_o    = aux_mem_q[31:0];
   end
+
 
   assign err_o = oh_raddr_a_err || oh_raddr_b_err || oh_we_err;
 

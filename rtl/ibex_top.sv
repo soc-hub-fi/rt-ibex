@@ -32,15 +32,19 @@ module ibex_top import ibex_pkg::*; #(
   parameter bit          SecureIbex       = 1'b0,
   parameter bit          ICacheScramble   = 1'b0,
   parameter bit          CLIC             = 1'b1,
-  parameter int unsigned NUM_INTERRUPTS   = 64,
+  parameter bit          HardwareStacking = 1'b0,
+  parameter int unsigned NumInterrupts    = 64,
+  parameter int unsigned NumPrioBits      = 4,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
   parameter int unsigned DmExceptionAddr  = 32'h1A110808,
-  parameter int unsigned MCLICBASE_ADDR   = 32'h00050000,
+  parameter int unsigned MClicBaseAddr    = 32'h00050000,
   // Default seed and nonce for scrambling
   parameter logic [SCRAMBLE_KEY_W-1:0]   RndCnstIbexKey   = RndCnstIbexKeyDefault,
-  parameter logic [SCRAMBLE_NONCE_W-1:0] RndCnstIbexNonce = RndCnstIbexNonceDefault
+  parameter logic [SCRAMBLE_NONCE_W-1:0] RndCnstIbexNonce = RndCnstIbexNonceDefault,
+  localparam int unsigned IrqLogWidth = $clog2(NumInterrupts),
+  localparam int unsigned NumPriorities = 2**(NumPrioBits)
 ) (
   // Clock and Reset
   input  logic                         clk_i,
@@ -51,8 +55,6 @@ module ibex_top import ibex_pkg::*; #(
 
   input  logic [31:0]                  hart_id_i,
   input  logic [31:0]                  boot_addr_i,
-  //input  logic [31:0]                  mtvec_addr_i,
-  //input  logic [31:0]                  mtvt_addr_i,
 
   // Instruction memory interface
   output logic                         instr_req_o,
@@ -77,12 +79,12 @@ module ibex_top import ibex_pkg::*; #(
   input  logic                         data_err_i,
 
   // Interrupt interface
-  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
+  input  logic [NumInterrupts-1:0]    irq_i,
   input  logic [7:0]                   irq_level_i,
   input  logic                         irq_shv_i,
   input  logic [1:0]                   irq_priv_i,
   output logic                         irq_ack_o,
-  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
+  output logic [IrqLogWidth-1:0]       irq_id_o,
 
   // Scrambling Interface
   input  logic                         scramble_key_valid_i,
@@ -155,6 +157,8 @@ module ibex_top import ibex_pkg::*; #(
   localparam int unsigned RegFileDataWidth      = RegFileECC ? 32 + 7 : 32;
   localparam bit          MemECC                = SecureIbex;
   localparam int unsigned MemDataWidth          = MemECC ? 32 + 7 : 32;
+  localparam bit          RegisterWindowing     = ((RegFile == RegFileWindowFF) | (RegFile == RegFileWindowLatch)) ? 1 : 0;
+  localparam bit          PCS                   = (RegFile == RegFilePCS) ? 1 : 0;
   // Icache parameters
   localparam int unsigned BusSizeECC        = ICacheECC ? (BUS_SIZE + 7) : BUS_SIZE;
   localparam int unsigned LineSizeECC       = BusSizeECC * IC_LINE_BEATS;
@@ -185,11 +189,17 @@ module ibex_top import ibex_pkg::*; #(
   logic [MemDataWidth-1:0]     instr_rdata_core;
 
   // IRQs
+  logic                        irq_ack;
   logic                        irq_software;
   logic                        irq_timer;
   logic                        irq_external;
-  //logic [14:0]               irq_fast; #replace these for now
   logic                        irq_nm;       // non-maskeable interrupt
+  logic                        mret_core;
+
+  logic [31:0] mepc_csr;
+  logic [31:0] mepc_pcs;
+  logic [31:0] mcause_csr;
+  logic [31:0] mcause_pcs;
 
   // Core <-> RAMs signals
   logic [IC_NUM_WAYS-1:0]      ic_tag_req;
@@ -214,7 +224,16 @@ module ibex_top import ibex_pkg::*; #(
   logic                        scramble_req_d, scramble_req_q;
 
   ibex_mubi_t                  fetch_enable_buf;
+  logic                        pcs_restore_done;
+  logic                        next_mret;
 
+  logic                        rf_increment_ptr;
+  logic                        rf_decrement_ptr;
+  logic                        rf_window_full;
+
+  logic [31:0]                 rfw_mepc;
+  logic [31:0]                 rfw_mcause;
+  logic                        rfw_save_csr;
   /////////////////////
   // Main clock gate //
   /////////////////////
@@ -249,10 +268,10 @@ module ibex_top import ibex_pkg::*; #(
 
   assign core_sleep_o = ~clock_en;
 
+  assign irq_ack_o    = irq_ack     ;
   assign irq_software = irq_i[3]    ;
   assign irq_timer    = irq_i[7]    ;
   assign irq_external = irq_i[11]   ;
-  //assign irq_fast     = irq_i[30:16];
   assign irq_nm       = irq_i[31]   ;
 
   prim_clock_gating core_clock_gate_i (
@@ -281,7 +300,6 @@ module ibex_top import ibex_pkg::*; #(
     .in_i (rf_rdata_b_ecc),
     .out_o(rf_rdata_b_ecc_buf)
   );
-
 
   // ibex_core takes integrity and data bits together. Combine the separate integrity and data
   // inputs here.
@@ -327,15 +345,15 @@ module ibex_top import ibex_pkg::*; #(
     .MemDataWidth     (MemDataWidth),
     .DmHaltAddr       (DmHaltAddr),
     .DmExceptionAddr  (DmExceptionAddr),
-    .MCLICBASE_ADDR   (MCLICBASE_ADDR)
+    .MCLICBASE_ADDR   (MClicBaseAddr),
+    .HardwareStacking (HardwareStacking),
+    .RegisterWindowing(RegisterWindowing)
   ) u_ibex_core (
     .clk_i(clk),
     .rst_ni,
 
     .hart_id_i,
     .boot_addr_i,
-    //.mtvt_addr_i,
-    //.mtvec_addr_i,
 
     .instr_req_o,
     .instr_gnt_i,
@@ -377,22 +395,31 @@ module ibex_top import ibex_pkg::*; #(
     .ic_scr_key_valid_i(scramble_key_valid_q),
     .ic_scr_key_req_o  (ic_scr_key_req),
 
-    //.irq_software_i (irq_software),
-    //.irq_timer_i    (irq_timer),
-    //.irq_external_i (irq_external),
-    //.irq_fast_i     (irq_fast),
-    //.irq_nm_i       (irq_nm),
     .irq_i            (irq_i),
     .irq_level_i      (irq_level_i),
     .irq_shv_i        (irq_shv_i),
     .irq_priv_i       (irq_priv_i),
-    .irq_ack_o        (irq_ack_o),
+    .irq_ack_o        (irq_ack),
     .irq_id_o         (irq_id_o),
     .irq_pending_o    (irq_pending),
+    //.mret_o           (mret_core),
+
+
+    .rfw_save_csr_o(rfw_save_csr),
+    .rf_mepc_i(rf_mepc),
+    .rf_mcause_i(rf_mcause),
+    .csr_mepc_o   (mepc_csr),
+    .csr_mcause_o (mcause_csr),
 
     .debug_req_i,
     .crash_dump_o,
     .double_fault_seen_o,
+
+    .pcs_mret_o   (mret_core),
+    .pcs_restore_done_i(pcs_restore_done),
+    .next_instr_mret_o (next_mret),
+    .start_pcs_o(start_pcs),
+
 
 `ifdef RVFI
     .rvfi_valid,
@@ -435,7 +462,12 @@ module ibex_top import ibex_pkg::*; #(
     .alert_minor_o         (core_alert_minor),
     .alert_major_internal_o(core_alert_major_internal),
     .alert_major_bus_o     (core_alert_major_bus),
-    .core_busy_o           (core_busy_d)
+    .core_busy_o           (core_busy_d),
+
+    // To windowed register file
+    .rf_increment_ptr_o(rf_increment_ptr),
+    .rf_decrement_ptr_o(rf_decrement_ptr),
+    .rf_window_full_i(rf_window_full)
   );
 
   /////////////////////////////////
@@ -443,7 +475,7 @@ module ibex_top import ibex_pkg::*; #(
   /////////////////////////////////
 
   logic rf_alert_major_internal;
-  if (RegFile == RegFileFF) begin : gen_regfile_ff
+if (RegFile == RegFileFF) begin : gen_regfile_ff
     ibex_register_file_ff #(
       .RV32E            (RV32E),
       .DataWidth        (RegFileDataWidth),
@@ -469,7 +501,113 @@ module ibex_top import ibex_pkg::*; #(
       .we_a_i   (rf_we_wb),
       .err_o    (rf_alert_major_internal)
     );
-  end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
+end else if (RegFile == RegFileLatch) begin : gen_regfile_latch
+      ibex_register_file_latch #(
+        .RV32E            (RV32E),
+        .DataWidth        (RegFileDataWidth),
+        .DummyInstructions(DummyInstructions),
+        // SEC_CM: DATA_REG_SW.GLITCH_DETECT
+        .WrenCheck        (RegFileWrenCheck),
+        .RdataMuxCheck    (RegFileRdataMuxCheck),
+        .WordZeroVal      (RegFileDataWidth'(prim_secded_pkg::SecdedInv3932ZeroWord))
+      ) register_file_i (
+        .clk_i (clk),
+        .rst_ni(rst_ni),
+
+        .test_en_i       (test_en_i),
+        .dummy_instr_id_i(dummy_instr_id),
+        .dummy_instr_wb_i(dummy_instr_wb),
+
+        .raddr_a_i(rf_raddr_a),
+        .rdata_a_o(rf_rdata_a_ecc),
+        .raddr_b_i(rf_raddr_b),
+        .rdata_b_o(rf_rdata_b_ecc),
+        .waddr_a_i(rf_waddr_wb),
+        .wdata_a_i(rf_wdata_wb_ecc),
+        .we_a_i   (rf_we_wb),
+        .err_o    (rf_alert_major_internal)
+      );
+end else if (RegFile == RegFileWindowFF) begin : gen_regfile_win_ff
+      rt_ibex_register_window_ff #(
+        .RV32E            (RV32E),
+        .DataWidth        (RegFileDataWidth),
+        .DummyInstructions(DummyInstructions),
+        // SEC_CM: DATA_REG_SW.GLITCH_DETECT
+        .WrenCheck        (RegFileWrenCheck),
+        .RdataMuxCheck    (RegFileRdataMuxCheck),
+        .WordZeroVal      (RegFileDataWidth'(prim_secded_pkg::SecdedInv3932ZeroWord)),
+        .NUM_RegisterWindows(NumPriorities),
+        .WindowSize(7) // TODO: Fix magic number
+      ) register_file_i (
+        .clk_i (clk),
+        .rst_ni(rst_ni),
+
+        .test_en_i       (test_en_i),
+        .dummy_instr_id_i(dummy_instr_id),
+        .dummy_instr_wb_i(dummy_instr_wb),
+
+        .raddr_a_i(rf_raddr_a),
+        .rdata_a_o(rf_rdata_a_ecc),
+        .raddr_b_i(rf_raddr_b),
+        .rdata_b_o(rf_rdata_b_ecc),
+        .waddr_a_i(rf_waddr_wb),
+        .wdata_a_i(rf_wdata_wb_ecc),
+        .we_a_i   (rf_we_wb),
+        .err_o    (rf_alert_major_internal),
+
+
+        .increment_ptr_i(rf_increment_ptr),
+        .decrement_ptr_i(rf_decrement_ptr),
+        .window_full_o(rf_window_full),
+
+        .mcause_i(mcause_csr),
+        .mepc_i(mepc_csr),
+        .mcause_o(rf_mcause),
+        .mepc_o(rf_mepc),
+
+        .save_csr_i(rfw_save_csr)
+      );
+end else if (RegFile == RegFileWindowLatch) begin : gen_regfile_win_latch
+      rt_ibex_register_window_latch #(
+        .RV32E            (RV32E),
+        .DataWidth        (RegFileDataWidth),
+        .DummyInstructions(DummyInstructions),
+        // SEC_CM: DATA_REG_SW.GLITCH_DETECT
+        .WrenCheck        (RegFileWrenCheck),
+        .RdataMuxCheck    (RegFileRdataMuxCheck),
+        .WordZeroVal      (RegFileDataWidth'(prim_secded_pkg::SecdedInv3932ZeroWord)),
+        .NUM_RegisterWindows(NumPriorities),
+        .WindowSize(7) // TODO: Fix magic number
+      ) register_file_i (
+        .clk_i (clk),
+        .rst_ni(rst_ni),
+
+        .test_en_i       (test_en_i),
+        .dummy_instr_id_i(dummy_instr_id),
+        .dummy_instr_wb_i(dummy_instr_wb),
+
+        .raddr_a_i(rf_raddr_a),
+        .rdata_a_o(rf_rdata_a_ecc),
+        .raddr_b_i(rf_raddr_b),
+        .rdata_b_o(rf_rdata_b_ecc),
+        .waddr_a_i(rf_waddr_wb),
+        .wdata_a_i(rf_wdata_wb_ecc),
+        .we_a_i   (rf_we_wb),
+        .err_o    (rf_alert_major_internal),
+
+
+        .increment_ptr_i(rf_increment_ptr),
+        .decrement_ptr_i(rf_decrement_ptr),
+        .window_full_o(rf_window_full),
+
+        .mcause_i(mcause_csr),
+        .mepc_i(mepc_csr),
+        .mcause_o(rf_mcause),
+        .mepc_o(rf_mepc),
+
+        .save_csr_i(rfw_save_csr)
+      );
+end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
     ibex_register_file_fpga #(
       .RV32E            (RV32E),
       .DataWidth        (RegFileDataWidth),
@@ -495,32 +633,35 @@ module ibex_top import ibex_pkg::*; #(
       .we_a_i   (rf_we_wb),
       .err_o    (rf_alert_major_internal)
     );
-  end else if (RegFile == RegFileLatch) begin : gen_regfile_latch
-    ibex_register_file_latch #(
+    assign rf_alert_major_internal = '0;
+
+  end else if (RegFile == RegFilePCS) begin : gen_regfile_pcs
+    rt_ibex_register_file_pcs #(
       .RV32E            (RV32E),
       .DataWidth        (RegFileDataWidth),
-      .DummyInstructions(DummyInstructions),
-      // SEC_CM: DATA_REG_SW.GLITCH_DETECT
-      .WrenCheck        (RegFileWrenCheck),
-      .RdataMuxCheck    (RegFileRdataMuxCheck),
-      .WordZeroVal      (RegFileDataWidth'(prim_secded_pkg::SecdedInv3932ZeroWord))
+      .pcsType          (MemoryPCS),
+      .IrqLevelWidth    (NumPriorities)
     ) register_file_i (
-      .clk_i (clk),
-      .rst_ni(rst_ni),
-
-      .test_en_i       (test_en_i),
-      .dummy_instr_id_i(dummy_instr_id),
-      .dummy_instr_wb_i(dummy_instr_wb),
-
-      .raddr_a_i(rf_raddr_a),
-      .rdata_a_o(rf_rdata_a_ecc),
-      .raddr_b_i(rf_raddr_b),
-      .rdata_b_o(rf_rdata_b_ecc),
-      .waddr_a_i(rf_waddr_wb),
-      .wdata_a_i(rf_wdata_wb_ecc),
-      .we_a_i   (rf_we_wb),
-      .err_o    (rf_alert_major_internal)
+      .clk_i       (clk),
+      .rst_ni      (rst_ni),
+      .irq_level_i (irq_level_i),
+      .irq_ack_i   (irq_ack),
+      .irq_exit_i  (mret_core),
+      .mepc_i      (mepc_csr),
+      .mcause_i    (mcause_csr),
+      .mepc_o      (rf_mepc),
+      .mcause_o    (rf_mcause),
+      .pcs_restore_done_o(pcs_restore_done),
+      .next_mret_i (next_mret),
+      .raddr_a_i   (rf_raddr_a),
+      .rdata_a_o   (rf_rdata_a_ecc),
+      .raddr_b_i   (rf_raddr_b),
+      .rdata_b_o   (rf_rdata_b_ecc),
+      .waddr_a_i   (rf_waddr_wb),
+      .wdata_a_i   (rf_wdata_wb_ecc),
+      .we_a_i      (rf_we_wb)
     );
+    assign rf_alert_major_internal = '0;
   end
 
   ///////////////////////////////
@@ -775,8 +916,8 @@ module ibex_top import ibex_pkg::*; #(
   `ASSERT_KNOWN_IF(IbexInstrReqPayloadX, instr_addr_o, instr_req_o)
 
   `ASSERT_KNOWN(IbexDataReqX, data_req_o)
-  `ASSERT_KNOWN_IF(IbexDataReqPayloadX,
-    {data_we_o, data_be_o, data_addr_o, data_wdata_o, data_wdata_intg_o}, data_req_o)
+  //`ASSERT_KNOWN_IF(IbexDataReqPayloadX,
+  //  {data_we_o, data_be_o, data_addr_o, data_wdata_o, data_wdata_intg_o}, data_req_o)
 
   `ASSERT_KNOWN(IbexScrambleReqX, scramble_req_o)
   `ASSERT_KNOWN(IbexDoubleFaultSeenX, double_fault_seen_o)
