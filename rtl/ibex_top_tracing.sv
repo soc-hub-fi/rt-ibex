@@ -25,7 +25,10 @@ module ibex_top_tracing import ibex_pkg::*; #(
   parameter int unsigned DbgHwBreakNum    = 1,
   parameter bit          SecureIbex       = 1'b0,
   parameter bit          ICacheScramble   = 1'b0,
-  parameter bit          CLIC             = 1'b0,
+  parameter bit          CLIC             = 1'b1,
+  parameter bit          HardwareStacking = 1'b0,
+  parameter bit          RegisterWindowing= 1'b0,
+  parameter int unsigned NUM_RegisterWindows = 4,
   parameter int unsigned NUM_INTERRUPTS   = 64,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
@@ -194,6 +197,9 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .DmHaltAddr       ( DmHaltAddr       ),
     .DmExceptionAddr  ( DmExceptionAddr  ),
     .CLIC             ( CLIC             ),
+    .HardwareStacking ( HardwareStacking ),
+    .RegisterWindowing( RegisterWindowing),
+    .NUM_RegisterWindows(NUM_RegisterWindows),
     .NUM_INTERRUPTS   ( NUM_INTERRUPTS   )
   ) u_ibex_top (
     .clk_i,

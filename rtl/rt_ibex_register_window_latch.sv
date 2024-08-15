@@ -11,13 +11,15 @@
  * based RF. It requires a target technology-specific clock gating cell. Use this
  * register file when targeting ASIC synthesis or event-based simulators.
  */
-module ibex_register_file_latch #(
+module rt_ibex_register_window_latch #(
   parameter bit                   RV32E             = 0,
   parameter int unsigned          DataWidth         = 32,
   parameter bit                   DummyInstructions = 0,
   parameter bit                   WrenCheck         = 0,
   parameter bit                   RdataMuxCheck     = 0,
-  parameter logic [DataWidth-1:0] WordZeroVal       = '0
+  parameter logic [DataWidth-1:0] WordZeroVal       = '0,
+  parameter int unsigned          NUM_RegisterWindows = 4,
+  parameter int unsigned          WindowSize        = 7
 ) (
   // Clock and Reset
   input  logic                 clk_i,
@@ -41,31 +43,162 @@ module ibex_register_file_latch #(
   input  logic                 we_a_i,
 
   // This indicates whether spurious WE or non-one-hot encoded raddr are detected.
-  output logic                 err_o
+  output logic                 err_o,
+
+  input  logic                 increment_ptr_i,
+  input  logic                 decrement_ptr_i,
+  output logic                 window_full_o,
+  input  logic [31:0]          mcause_i,
+  input  logic [31:0]          mepc_i,
+  output logic [31:0]          mcause_o,
+  output logic [31:0]          mepc_o,
+
+  input  logic                 save_csr_i
 );
 
-  localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
-  localparam int unsigned NUM_WORDS  = 2**ADDR_WIDTH;
+  //localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
+  localparam int unsigned BASE_WINDOW_SIZE = RV32E ? 16 : 32;
+  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NUM_RegisterWindows * WindowSize;
+  localparam int unsigned ADDR_WIDTH  = $clog2(NUM_WORDS);
+  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NUM_RegisterWindows);
+
 
   logic [DataWidth-1:0] mem[NUM_WORDS];
+  logic [2*32-1:0] aux_mem[NUM_RegisterWindows];
 
   logic [NUM_WORDS-1:0] waddr_onehot_a;
+  logic [NUM_RegisterWindows-1:0] aux_waddr_onehot_a;
+  logic [2*32-1:0]      aux_mem_q; 
 
   logic oh_raddr_a_err, oh_raddr_b_err, oh_we_err;
 
   logic [NUM_WORDS-1:1] mem_clocks;
+  logic [NUM_RegisterWindows-1:0] aux_mem_clocks;
+
   logic [DataWidth-1:0] wdata_a_q;
 
   // internal addresses
   logic [ADDR_WIDTH-1:0] raddr_a_int, raddr_b_int, waddr_a_int;
 
-  assign raddr_a_int = raddr_a_i[ADDR_WIDTH-1:0];
-  assign raddr_b_int = raddr_b_i[ADDR_WIDTH-1:0];
-  assign waddr_a_int = waddr_a_i[ADDR_WIDTH-1:0];
+  logic [ADDR_WIDTH-1:0] window_ptr; 
+  logic [AUX_ADDR_WIDTH-1:0] aux_ptr;
+
+  logic [$clog2(WindowSize)-1:0] offset_ra, offset_rb, offset_w;
+  logic [ADDR_WIDTH-1:0] windowed_raddr_a, windowed_raddr_b, windowed_waddr;
+
+  logic  offset_sel;
+  logic  is_eabi_ra, is_eabi_rb, is_eabi_w;
+  logic  window_full;
+
+
+  assign window_full_o  = window_full;
+
+  assign window_full    = window_ptr == ((NUM_RegisterWindows-1) * WindowSize); 
+
+  always_comb begin 
+    is_eabi_ra = 1'b1;
+    case (raddr_a_i)
+      1:  offset_ra = 0; //  x1 : ra
+      5:  offset_ra = 1; //  x5 : t0
+      10: offset_ra = 2; // x10 : a0
+      11: offset_ra = 3; // x11 : a1
+      12: offset_ra = 4; // x12 : a2
+      13: offset_ra = 5; // x13 : a3
+      15: offset_ra = 6; // x15 : t1
+      default: begin 
+        offset_ra = 0; 
+        is_eabi_ra = 1'b0;
+      end 
+    endcase
+  end 
+
+
+  always_comb begin 
+    is_eabi_rb = 1'b1;
+    case (raddr_b_i)
+      1:  offset_rb = 0;  //  x1 : ra
+      5:  offset_rb = 1;  //  x5 : t0
+      10: offset_rb = 2; // x10 : a0
+      11: offset_rb = 3; // x11 : a1
+      12: offset_rb = 4; // x12 : a2
+      13: offset_rb = 5; // x13 : a3
+      15: offset_rb = 6; // x15 : t1
+      default: begin 
+        offset_rb = 0; 
+        is_eabi_rb = 1'b0;
+      end 
+    endcase
+  end 
+
+
+  always_comb begin 
+    is_eabi_w = 1'b1;
+    case (waddr_a_i)
+      1:  offset_w = 0;  //  x1 : ra
+      5:  offset_w = 1;  //  x5 : t0
+      10: offset_w = 2; // x10 : a0
+      11: offset_w = 3; // x11 : a1
+      12: offset_w = 4; // x12 : a2
+      13: offset_w = 5; // x13 : a3
+      15: offset_w = 6; // x15 : t1
+      default: begin 
+        offset_w = 0; 
+        is_eabi_w = 1'b0;
+      end 
+    endcase
+  end 
+
+  assign windowed_raddr_a = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_ra;
+  assign windowed_raddr_b = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_rb;
+  assign windowed_waddr   = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_w;
+
+  assign offset_sel  = (window_ptr != 0);
+
+  assign raddr_a_int = (offset_sel && is_eabi_ra) ? windowed_raddr_a : {'0, raddr_a_i[4:0]};
+  assign raddr_b_int = (offset_sel && is_eabi_rb) ? windowed_raddr_b : {'0, raddr_b_i[4:0]};
+  assign waddr_a_int = (offset_sel && is_eabi_w)  ? windowed_waddr   : {'0, waddr_a_i[4:0]};
 
   logic clk_int;
 
   assign err_o = oh_raddr_a_err || oh_raddr_b_err || oh_we_err;
+
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : window_ptr_
+    if (!rst_ni) begin
+      window_ptr   <= '0;
+    end else begin
+      if (increment_ptr_i) begin
+        if(!(window_ptr == NUM_WORDS-WindowSize)) begin  // window_pointer is NOT pointing to the last window
+          window_ptr <= window_ptr + WindowSize;
+        end 
+      end 
+
+      if(decrement_ptr_i) begin 
+        window_ptr <= window_ptr - WindowSize;
+      end 
+    end 
+  end
+
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : aux_ptr_
+    if (!rst_ni) begin
+      aux_ptr   <= '0;
+    end else begin
+      if (increment_ptr_i) begin
+        if(!(aux_ptr == NUM_RegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
+          aux_ptr <= aux_ptr + 1;
+        end 
+      end 
+
+      if(decrement_ptr_i) begin 
+        aux_ptr <= aux_ptr - 1;
+      end 
+    end 
+  end
+
+
+  
+
 
   //////////
   // READ //
@@ -167,6 +300,10 @@ module ibex_register_file_latch #(
     assign rdata_b_o = mem[raddr_b_int];
     assign oh_raddr_a_err = 1'b0;
     assign oh_raddr_b_err = 1'b0;
+
+    assign aux_mem_q = aux_mem[aux_ptr];  
+    assign mcause_o  = aux_mem_q[63:32];
+    assign mepc_o    = aux_mem_q[31:0];
   end
 
   ///////////
@@ -175,10 +312,12 @@ module ibex_register_file_latch #(
   // Global clock gating
   prim_clock_gating cg_we_global (
       .clk_i     ( clk_i     ),
-      .en_i      ( we_a_i    ),
+      .en_i      ( we_a_i || save_csr_i   ),
       .test_en_i ( test_en_i ),
       .clk_o     ( clk_int   )
   );
+
+
 
   // Sample input data
   // Use clk_int here, since otherwise we don't want to write anything anyway.
@@ -195,10 +334,21 @@ module ibex_register_file_latch #(
   // Write address decoding
   always_comb begin : wad
     for (int i = 0; i < NUM_WORDS; i++) begin : wad_word_iter
-      if (we_a_i && (waddr_a_int == 5'(i))) begin
+      if (we_a_i && (waddr_a_int == ADDR_WIDTH'(i))) begin
         waddr_onehot_a[i] = 1'b1;
       end else begin
         waddr_onehot_a[i] = 1'b0;
+      end
+    end
+  end
+
+
+  always_comb begin : aux_wad
+    for (int i = 0; i < NUM_RegisterWindows; i++) begin : aux_wad_word_iter
+      if (save_csr_i && (aux_ptr == AUX_ADDR_WIDTH'(i))) begin
+        aux_waddr_onehot_a[i] = 1'b1;
+      end else begin
+        aux_waddr_onehot_a[i] = 1'b0;
       end
     end
   end
@@ -244,6 +394,16 @@ module ibex_register_file_latch #(
     );
   end
 
+  // Individual clock gating (if integrated clock-gating cells are available)
+  for (genvar x = 0; x < NUM_RegisterWindows; x++) begin : gen_aux_cg_word_iter
+    prim_clock_gating aux_cg_i (
+        .clk_i     ( clk_int           ),
+        .en_i      ( aux_waddr_onehot_a[x] ),
+        .test_en_i ( test_en_i         ),
+        .clk_o     ( aux_mem_clocks[x]     )
+    );
+  end
+
   // Actual write operation:
   // Generate the sequential process for the NUM_WORDS words of the memory.
   // The process is synchronized with the clocks mem_clocks[i], i = 1, ..., NUM_WORDS-1.
@@ -251,6 +411,16 @@ module ibex_register_file_latch #(
     always_latch begin
       if (mem_clocks[i]) begin
         mem[i] = wdata_a_q;
+      end
+    end
+  end
+
+
+
+  for (genvar i = 0; i < NUM_RegisterWindows; i++) begin : g_auxrf_latches
+    always_latch begin
+      if (aux_mem_clocks[i]) begin
+        aux_mem[i] = {mcause_i, mepc_i};
       end
     end
   end

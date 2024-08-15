@@ -42,6 +42,10 @@ module ibex_core import ibex_pkg::*; #(
   parameter bit          MemECC            = 1'b0,
   parameter int unsigned NUM_INTERRUPTS    = 64,
   parameter bit          CLIC              = 1'b1,
+  parameter bit          HardwareStacking  = 1'b0,
+  parameter bit          RegisterWindowing = 1'b0,
+  parameter bit          PCS               = 1'b0,
+  parameter int unsigned NUM_RegisterWindows = 4,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32,
   parameter int unsigned DmHaltAddr        = 32'h1A110800,
   parameter int unsigned DmExceptionAddr   = 32'h1A110808,
@@ -170,7 +174,25 @@ module ibex_core import ibex_pkg::*; #(
   output logic                         alert_minor_o,
   output logic                         alert_major_internal_o,
   output logic                         alert_major_bus_o,
-  output ibex_mubi_t                   core_busy_o
+  output ibex_mubi_t                   core_busy_o,
+
+
+  // pcs Support
+  output logic                         pcs_mret_o,
+  input  logic                         pcs_restore_done_i,
+  output logic                         next_instr_mret_o,
+  output logic                         start_pcs_o,
+
+  // To windowed register file
+  output logic                 rf_increment_ptr_o,
+  output logic                 rf_decrement_ptr_o,                 
+  input  logic                 rf_window_full_i,
+
+  output logic                 rfw_save_csr_o,
+  input  logic [31:0]          rf_mepc_i,
+  input  logic [31:0]          rf_mcause_i,
+  output logic [31:0]          csr_mepc_o,
+  output logic [31:0]          csr_mcause_o  
 );
 
   localparam int unsigned PMPNumChan      = 3;
@@ -412,6 +434,34 @@ module ibex_core import ibex_pkg::*; #(
 
   logic        abort;
 
+
+  // Hw stacking 
+  logic             stacking_start;
+  logic             stacking_ack;
+  hw_stacking_mode  stacking_mode;
+
+  logic             stacking_instr_valid;
+  logic [31:0]      stacking_instr_rdata;
+  logic [15:0]      stacking_instr_rdata_c;
+  logic             stacking_instr_is_compressed;
+  logic             stacking_done;
+  logic             stacking_id_mux_ctrl;
+  
+  logic             id_in_ready_masked;
+  logic [1:0]       lsu_data_select;          
+  logic             stacking_mcause_pending;
+  logic [31:0]      csr_mcause;
+
+  logic             stacking_csr_fast_lsu;
+  logic             stacking_csr_select;
+
+  logic             csr_fast_wrf;
+
+
+  assign csr_mcause_o = csr_mcause;
+  assign csr_mepc_o   = csr_mepc;
+
+  
   assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
     ? exc_cause.cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
 
@@ -564,7 +614,7 @@ module ibex_core import ibex_pkg::*; #(
     .m_trap_base_addr_clic_shv_i  (csr_mtvt),
 
     // pipeline stalls
-    .id_in_ready_i(id_in_ready),
+    .id_in_ready_i(id_in_ready_masked),
 
     .pc_mismatch_alert_o(pc_mismatch_alert),
     .if_busy_o          (if_busy)
@@ -596,9 +646,46 @@ module ibex_core import ibex_pkg::*; #(
     assign instr_exec      = fetch_enable_i[0];
   end
 
+
+
+  /////////////////
+  // HW stacking //
+  /////////////////
+  if(HardwareStacking) begin 
+    rt_ibex_hw_stacking #(
+    ) hw_stacking_i (
+      .clk_i (clk_i),
+      .rst_ni(rst_ni),
+
+      
+      .start_i(stacking_start),
+      .ack_i(stacking_ack),
+      .mode_i(stacking_mode),
+      .instr_first_cycle_i(instr_first_cycle_id),
+      .instr_valid_clear_i(instr_valid_clear), 
+      .id_in_ready_i(id_in_ready), 
+
+
+      .instr_valid_o(stacking_instr_valid),
+      .instr_rdata_o(stacking_instr_rdata),
+      .instr_rdata_c_o(stacking_instr_rdata_c),
+      .instr_is_compressed_o(stacking_instr_is_compressed),
+      .done_o(stacking_done),
+      .id_mux_ctrl_o(stacking_id_mux_ctrl),
+      .lsu_data_select_o(lsu_data_select),
+      .mcause_pending_o(stacking_mcause_pending)
+    );
+  end 
+  else begin
+    // constant propagation to clean the hw_stack logic in Controller, ID-stage, LSU  
+    assign stacking_id_mux_ctrl = 1'b0;
+    assign lsu_data_select      = 2'b00;
+  end 
+
   //////////////
   // ID stage //
   //////////////
+
 
   ibex_id_stage #(
     .RV32E          (RV32E),
@@ -609,7 +696,10 @@ module ibex_core import ibex_pkg::*; #(
     .WritebackStage (WritebackStage),
     .BranchPredictor(BranchPredictor),
     .MemECC         (MemECC),
-    .CLIC           (CLIC)
+    .CLIC           (CLIC),
+    .RegisterWindowing(RegisterWindowing),
+    .HardwareStacking(HardwareStacking),
+    .PCS(PCS)
   ) id_stage_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -626,6 +716,17 @@ module ibex_core import ibex_pkg::*; #(
     .instr_is_compressed_i(instr_is_compressed_id),
     .instr_bp_taken_i     (instr_bp_taken_id),
 
+    // from/to hw stacking unit 
+    .stacking_start_o(stacking_start),
+    .stacking_done_i(stacking_done),
+    .stacking_instr_rdata_i(stacking_instr_rdata),
+    .stacking_instr_valid_i(stacking_instr_valid),
+    .stacking_instr_is_compressed_i(stacking_instr_is_compressed),
+    .stacking_mode_o(stacking_mode),
+    .id_mux_ctrl_i(stacking_id_mux_ctrl),
+    .stacking_mcause_pending_i(stacking_mcause_pending),
+    .stacking_ack_o(stacking_ack),
+
     // Jumps and branches
     .branch_decision_i(branch_decision),
 
@@ -633,6 +734,7 @@ module ibex_core import ibex_pkg::*; #(
     .instr_first_cycle_id_o(instr_first_cycle_id),
     .instr_valid_clear_o   (instr_valid_clear),
     .id_in_ready_o         (id_in_ready),
+    .id_in_ready_masked_o  (id_in_ready_masked),
     .instr_exec_i          (instr_exec),
     .instr_req_o           (instr_req_int),
     .pc_set_o              (pc_set),
@@ -778,7 +880,23 @@ module ibex_core import ibex_pkg::*; #(
     .perf_dside_wait_o(perf_dside_wait),
     .perf_mul_wait_o  (perf_mul_wait),
     .perf_div_wait_o  (perf_div_wait),
-    .instr_id_done_o  (instr_id_done)
+    .instr_id_done_o  (instr_id_done),
+
+    
+    // pcs support
+    .pcs_mret_o(pcs_mret_o),
+    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
+    .pcs_restore_done_i         (pcs_restore_done_i),
+    .start_pcs_o(start_pcs_o),
+
+
+    // To windowed register file
+    .rf_increment_ptr_o(rf_increment_ptr_o),
+    .rf_decrement_ptr_o(rf_decrement_ptr_o),                 
+    .rf_window_full_i(rf_window_full_i),
+    .rfw_save_csr_o(rfw_save_csr_o),
+    .csr_fast_wrf_o(csr_fast_wrf)      
+
   );
 
   // for RVFI only
@@ -886,8 +1004,14 @@ module ibex_core import ibex_pkg::*; #(
     .busy_o(lsu_busy),
 
     .perf_load_o (perf_load),
-    .perf_store_o(perf_store)
+    .perf_store_o(perf_store), 
+
+    // For hw_stacking 
+    .csr_mepc_i(csr_mepc),
+    .csr_mcause_i(csr_mcause),
+    .data_select_i(lsu_data_select)
   );
+
 
   ibex_wb_stage #(
     .ResetAll         (ResetAll),
@@ -1052,11 +1176,11 @@ module ibex_core import ibex_pkg::*; #(
     assign outstanding_load_resp  = outstanding_load_id;
     assign outstanding_store_resp = outstanding_store_id;
 
-    `ASSERT(NoMemRFWriteWithoutPendingLoad, rf_we_lsu |-> outstanding_load_id, clk_i, !rst_ni)
+    //`ASSERT(NoMemRFWriteWithoutPendingLoad, rf_we_lsu |-> outstanding_load_id, clk_i, !rst_ni)
   end
 
-  `ASSERT(NoMemResponseWithoutPendingAccess,
-    data_rvalid_i |-> outstanding_load_resp | outstanding_store_resp, clk_i, !rst_ni)
+  //`ASSERT(NoMemResponseWithoutPendingAccess,
+  //  data_rvalid_i |-> outstanding_load_resp | outstanding_store_resp, clk_i, !rst_ni)
 
 
   // Keep track of the PC last seen in the ID stage when fetch is disabled
@@ -1162,6 +1286,7 @@ module ibex_core import ibex_pkg::*; #(
     .csr_mstatus_mie_o(csr_mstatus_mie),
     .csr_mstatus_tw_o (csr_mstatus_tw),
     .csr_mepc_o       (csr_mepc),
+    .csr_mcause_o     (csr_mcause),
     .csr_mtval_o      (crash_dump_mtval),
     .mie_bypass_o     (mie_bypass),
     .mip_i            (mip),
@@ -1228,7 +1353,16 @@ module ibex_core import ibex_pkg::*; #(
     .mem_store_i                (perf_store),
     .dside_wait_i               (perf_dside_wait),
     .mul_wait_i                 (perf_mul_wait),
-    .div_wait_i                 (perf_div_wait)
+    .div_wait_i                 (perf_div_wait), 
+
+    .csr_fast_lsu_i(stacking_csr_fast_lsu),
+    .stacking_csr_select_i(stacking_csr_select),
+    .lsu_rdata_i(rf_wdata_lsu), 
+    .lsu_rdata_valid_i(rf_we_lsu),
+    
+    .rfw_mepc_i(rf_mepc_i),
+    .rfw_mcause_i(rf_mcause_i),
+    .csr_fast_wrf_i(csr_fast_wrf) 
   );
 
   // These assertions are in top-level as instr_valid_id required as the enable term

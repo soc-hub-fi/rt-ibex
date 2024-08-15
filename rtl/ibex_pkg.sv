@@ -33,9 +33,12 @@ package ibex_pkg;
   /////////////////////
 
   typedef enum integer {
-    RegFileFF    = 0,
-    RegFileFPGA  = 1,
-    RegFileLatch = 2
+    RegFileFF          = 0,
+    RegFileFPGA        = 1,
+    RegFileLatch       = 2,
+    RegFileWindowFF    = 3,
+    RegFileWindowLatch = 4,
+    RegFilePCS         = 5
   } regfile_e;
 
   typedef enum integer {
@@ -51,6 +54,12 @@ package ibex_pkg;
     RV32BOTEarlGrey = 2,
     RV32BFull       = 3
   } rv32b_e;
+
+  typedef enum integer {
+    MemoryPCS   = 0,
+    ShiftRegPCS = 1
+  } pcs_e;
+
 
   /////////////
   // Opcodes //
@@ -283,8 +292,11 @@ package ibex_pkg;
     FLUSH,
     IRQ_TAKEN,
     LOAD_VTABLE_ENTRY,
+    HW_STACK,
     DBG_TAKEN_IF,
-    DBG_TAKEN_ID
+    DBG_TAKEN_ID,
+    HWS_MRET,
+    PCS_MRET
   } ctrl_fsm_e;
 
   //////////////
@@ -311,6 +323,54 @@ package ibex_pkg;
     EXC_PC_VTABLE
   } exc_pc_sel_e;
 
+
+  //////////////////////////////
+  // Hardware Stacking Unit 
+  ///////////////////////////////
+
+
+  typedef enum logic {
+    SAVE,
+    RESTORE
+  } hw_stacking_mode;
+
+
+  // typedef enum logic [31:0] {
+  //   ALLOC_STACK   = 32'hfdc10113,
+  //   DEALLOC_STACK = 32'h02410113,
+  //   LOAD_WORD     = '{12'h000, 5'h02, 3'h2, 5'h00, 7'h03},
+  //   STORE_WORD    = '{7'h000, 5'h00, 5'h02, 3'h2, 5'h00, 7'h23}
+  // } stacking_instr;
+
+
+
+  typedef struct packed{
+    logic [11:0] imm; 
+    logic [4:0]  base;      
+    logic [2:0]  func3;
+    logic [4:0]  dest;  
+    opcode_e     opcode;
+  } load_sp_t;
+  
+  
+  typedef struct packed{
+    logic [6:0]  imm; 
+    logic [4:0]  src;  
+    logic [4:0]  base;      
+    logic [2:0]  func3;
+    logic [4:0]  imm2; 
+    opcode_e     opcode;
+  } store_sp_t;
+  
+
+  parameter logic [31:0] Alloc_stack_instr   = 32'hFDC10113;
+  parameter logic [31:0] Dealloc_stack_instr = 32'h02410113;
+  
+
+
+  /////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////
+
   // Interrupt requests
   typedef struct packed {
     logic        irq_software;
@@ -329,6 +389,7 @@ package ibex_pkg;
     // hardwired to '0
     logic [7:0]   uil;
   } mintstatus_t;
+
 
   typedef struct packed {
     logic       irq;

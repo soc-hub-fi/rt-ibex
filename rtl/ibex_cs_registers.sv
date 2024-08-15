@@ -83,6 +83,7 @@ module ibex_cs_registers #(
   output logic                              m_irq_enable_o,
   input  logic                              minhv_i,
   output ibex_pkg::priv_lvl_e               priv_lvl_o,
+  output logic [31:0]                       csr_mcause_o,
 
   // PMP
   output ibex_pkg::pmp_cfg_t     csr_pmp_cfg_o  [PMPNumRegions],
@@ -143,7 +144,19 @@ module ibex_cs_registers #(
   input  logic                 mem_store_i,                 // store to memory in this cycle
   input  logic                 dside_wait_i,                // core waiting for the dside
   input  logic                 mul_wait_i,                  // core waiting for multiply
-  input  logic                 div_wait_i                   // core waiting for divide
+  input  logic                 div_wait_i,                  // core waiting for divide
+  
+  // From/To LSU/HW_STACKING_UNIT 
+  input  logic                 csr_fast_lsu_i,
+  input  logic                 stacking_csr_select_i,
+  input  logic [31:0]          lsu_rdata_i, 
+  input  logic                 lsu_rdata_valid_i ,
+
+
+  input  logic [31:0]          rfw_mepc_i,
+  input  logic [31:0]          rfw_mcause_i,
+  input  logic                 csr_fast_wrf_i
+
 );
 
   import ibex_pkg::*;
@@ -399,6 +412,8 @@ module ibex_cs_registers #(
   // Only support machine mode
   assign priv_lvl_o   = PRIV_LVL_M;
   assign irq_id_instant_d = irq_id_instant_i;
+
+  assign csr_mcause_o = mcause_q;
 
 
   // MIE CSR operation logic
@@ -734,7 +749,6 @@ module ibex_cs_registers #(
     // mtvec.BASE must be 256-byte aligned
     mtvec_d      = csr_mtvec_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};
 
-    // Abdesattar: maybe not this value. 
     mtvt_d       = csr_mtvt_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};
     // CLIC regs
     mnxti_d        = csr_wdata_int;
@@ -913,6 +927,17 @@ module ibex_cs_registers #(
 
     // exception controller gets priority over other writes
     unique case (1'b1)
+      csr_fast_lsu_i: begin
+        if(lsu_rdata_valid_i) begin 
+          if(stacking_csr_select_i) begin   // save mepc 
+            mepc_en        = 1'b1;
+            mepc_d         = lsu_rdata_i;
+          end else begin 
+            mcause_en      = 1'b1;
+            mcause_d       = lsu_rdata_i;
+          end 
+        end 
+      end 
 
       csr_save_cause_i: begin
         unique case (1'b1)

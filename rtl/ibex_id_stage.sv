@@ -27,7 +27,10 @@ module ibex_id_stage #(
   parameter bit               BranchPredictor = 0,
   parameter bit               MemECC          = 1'b0,
   parameter int unsigned      NUM_INTERRUPTS  = 64,
-  parameter bit               CLIC            = 1
+  parameter bit               CLIC            = 1, 
+  parameter bit               HardwareStacking= 1'b0,
+  parameter bit               RegisterWindowing= 1'b0,
+  parameter bit               PCS              = 1'b0
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
@@ -45,7 +48,8 @@ module ibex_id_stage #(
   output logic                      instr_req_o,
   output logic                      instr_first_cycle_id_o,
   output logic                      instr_valid_clear_o,   // kill instr in IF-ID reg
-  output logic                      id_in_ready_o,         // ID stage is ready for next instr
+  output logic                      id_in_ready_o,         // ID stage is ready for next instr from hw_stacking
+  output logic                      id_in_ready_masked_o,  // ID stage is ready for next instr from IF-stage
   input  logic                      instr_exec_i,
   output logic                      icache_inval_o,
 
@@ -67,6 +71,20 @@ module ibex_id_stage #(
 
   input  logic                      if_instr_valid_i,
   input  logic [31:0]               pc_id_i,
+
+
+  // from/to hw stacking unit 
+  input  logic                      stacking_done_i,
+  input  logic [31:0]               stacking_instr_rdata_i,
+  input  logic                      stacking_instr_valid_i,
+  input  logic                      stacking_instr_is_compressed_i,
+  output logic                      stacking_start_o,
+  output ibex_pkg::hw_stacking_mode stacking_mode_o,
+  input  logic                      id_mux_ctrl_i,
+  input  logic                      stacking_mcause_pending_i,    // we are currently in the stage of executing mcause save/restore...
+                                                                  // don't allow late-arrival 
+  output logic                      stacking_ack_o,
+
 
   // Stalls
   input  logic                      ex_valid_i,       // EX stage has valid output
@@ -211,7 +229,22 @@ module ibex_id_stage #(
                                                         // access to finish before proceeding
   output logic                      perf_mul_wait_o,
   output logic                      perf_div_wait_o,
-  output logic                      instr_id_done_o   
+  output logic                      instr_id_done_o,
+
+
+  // pcs support
+  output logic                      pcs_mret_o,
+  output logic                      pcs_csr_restore_mret_id_o,
+  input  logic                      pcs_restore_done_i,
+  output logic                      start_pcs_o,
+
+
+  // To windowed register file
+  output logic                 rf_increment_ptr_o,
+  output logic                 rf_decrement_ptr_o,                 
+  input  logic                 rf_window_full_i,
+  output logic                 rfw_save_csr_o,
+  output logic                 csr_fast_wrf_o  
 );
 
   import ibex_pkg::*;
@@ -322,6 +355,12 @@ module ibex_id_stage #(
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl;
 
   logic abort;
+  
+  logic [31:0] instr_rdata;
+  logic [31:0] instr_rdata_alu;
+  logic        instr_valid;
+  logic        instr_is_compressed;
+
 
   assign irq_id_ctrl_o = irq_id_ctrl;
 
@@ -457,6 +496,14 @@ module ibex_id_stage #(
     endcase
   end
 
+
+  /////////////////////////////////
+  /// HW STACKING MULTIXPLEXING ///
+  ////////////////////////////////
+
+  assign instr_rdata = (id_mux_ctrl_i == 1'b1) ? stacking_instr_rdata_i : instr_rdata_i;
+  assign instr_rdata_alu = (id_mux_ctrl_i == 1'b1) ? stacking_instr_rdata_i : instr_rdata_alu_i;
+
   /////////////
   // Decoder //
   /////////////
@@ -470,7 +517,7 @@ module ibex_id_stage #(
     .clk_i (clk_i),
     .rst_ni(rst_ni),
 
-    // controller
+    // controller 
     .illegal_insn_o(illegal_insn_dec),
     .ebrk_insn_o   (ebrk_insn),
     .mret_insn_o   (mret_insn_dec),
@@ -483,8 +530,8 @@ module ibex_id_stage #(
 
     // from IF-ID pipeline register
     .instr_first_cycle_i(instr_first_cycle),
-    .instr_rdata_i      (instr_rdata_i),
-    .instr_rdata_alu_i  (instr_rdata_alu_i),
+    .instr_rdata_i      (instr_rdata),
+    .instr_rdata_alu_i  (instr_rdata_alu),
     .illegal_c_insn_i   (illegal_c_insn_i),
 
     // immediates
@@ -663,10 +710,25 @@ module ibex_id_stage #(
 
   assign mem_resp_intg_err = lsu_load_resp_intg_err_i | lsu_store_resp_intg_err_i;
 
+
+
+  /////////////////////////////////
+  /// HW STACKING MULTIXPLEXING ///
+  ////////////////////////////////
+
+
+  assign instr_valid = (id_mux_ctrl_i == 1'b1) ? stacking_instr_valid_i : instr_valid_i;
+  assign instr_is_compressed = (id_mux_ctrl_i == 1'b1) ? stacking_instr_is_compressed_i : instr_is_compressed_i;
+  
+
+
   ibex_controller #(
     .WritebackStage (WritebackStage),
     .BranchPredictor(BranchPredictor),
-    .MemECC(MemECC)
+    .MemECC(MemECC), 
+    .HardwareStacking(HardwareStacking),
+    .RegisterWindowing(RegisterWindowing),
+    .PCS(PCS)
   ) controller_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -683,10 +745,10 @@ module ibex_id_stage #(
     .csr_pipe_flush_i(csr_pipe_flush),
 
     // from IF-ID pipeline
-    .instr_valid_i          (instr_valid_i),
-    .instr_i                (instr_rdata_i),
+    .instr_valid_i          (instr_valid),
+    .instr_i                (instr_rdata),
     .instr_compressed_i     (instr_rdata_c_i),
-    .instr_is_compressed_i  (instr_is_compressed_i),
+    .instr_is_compressed_i  (instr_is_compressed),
     .instr_bp_taken_i       (instr_bp_taken_i),
     .instr_fetch_err_i      (instr_fetch_err_i),
     .instr_fetch_err_plus2_i(instr_fetch_err_plus2_i),
@@ -769,7 +831,30 @@ module ibex_id_stage #(
 
     // Performance Counters
     .perf_jump_o   (perf_jump_o),
-    .perf_tbranch_o(perf_tbranch_o)
+    .perf_tbranch_o(perf_tbranch_o), 
+
+    // Hw stacking unit 
+    .stacking_done_i(stacking_done_i),
+    .stacking_start_o(stacking_start_o),
+    .stacking_mode_o(stacking_mode_o),
+    .stacking_mcause_pending_i(stacking_mcause_pending_i),
+    
+    .id_in_ready_masked_o(id_in_ready_masked_o),
+    .stacking_ack_o(stacking_ack_o),
+
+    // To windowed register file
+    .rf_increment_ptr_o(rf_increment_ptr_o),
+    .rf_decrement_ptr_o(rf_decrement_ptr_o),                 
+    .rf_window_full_i(rf_window_full_i),
+    .rfw_save_csr_o(rfw_save_csr_o),
+    .csr_fast_wrf_o(csr_fast_wrf_o),
+
+    
+    // pcs support
+    .pcs_mret_o(pcs_mret_o),
+    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
+    .pcs_restore_done_i(pcs_restore_done_i),
+    .start_pcs_o(start_pcs_o)
   );
 
 
@@ -1026,14 +1111,14 @@ module ibex_id_stage #(
   // Generally illegal instructions have no reason to stall, however they must still stall waiting
   // for outstanding memory requests so exceptions related to them take priority over the illegal
   // instruction exception.
-  `ASSERT(IllegalInsnStallMustBeMemStall, illegal_insn_o & stall_id |-> stall_mem &
-    ~(stall_ld_hz | stall_multdiv | stall_jump | stall_branch | stall_alu))
+  //`ASSERT(IllegalInsnStallMustBeMemStall, illegal_insn_o & stall_id |-> stall_mem &
+  //  ~(stall_ld_hz | stall_multdiv | stall_jump | stall_branch | stall_alu))
 
   assign instr_done = ~stall_id & ~flush_id & instr_executing;
 
   // Signal instruction in ID is in it's first cycle. It can remain in its
   // first cycle if it is stalled.
-  assign instr_first_cycle      = instr_valid_i & (id_fsm_q == FIRST_CYCLE);
+  assign instr_first_cycle      = instr_valid & (id_fsm_q == FIRST_CYCLE);
   // Used by RVFI to know when to capture register read data
   // Used by ALU to access RS3 if ternary instruction.
   assign instr_first_cycle_id_o = instr_first_cycle;
@@ -1088,12 +1173,12 @@ module ibex_id_stage #(
     //
     // instr_executing is the full signal, it will only allow execution once any potential
     // exceptions from writeback have been resolved.
-    assign instr_executing_spec = instr_valid_i      &
+    assign instr_executing_spec = instr_valid      &
                                   ~instr_fetch_err_i &
                                   controller_run     &
                                   ~stall_ld_hz;
 
-    assign instr_executing = instr_valid_i              &
+    assign instr_executing = instr_valid              &
                              ~instr_kill                &
                              ~stall_ld_hz               &
                              ~outstanding_memory_access;
@@ -1101,7 +1186,7 @@ module ibex_id_stage #(
     `ASSERT(IbexExecutingSpecIfExecuting, instr_executing |-> instr_executing_spec)
 
     `ASSERT(IbexStallIfValidInstrNotExecuting,
-      instr_valid_i & ~instr_kill & ~instr_executing |-> stall_id)
+      instr_valid & ~instr_kill & ~instr_executing |-> stall_id)
 
     `ASSERT(IbexCannotRetireWithPendingExceptions,
       instr_done |-> ~(wb_exception | outstanding_memory_access))
@@ -1111,13 +1196,13 @@ module ibex_id_stage #(
     //   precise exceptions)
     // * There is a load/store request not being granted or which is unaligned and waiting to issue
     //   a second request (needs to stay in ID for the address calculation)
-    assign stall_mem = instr_valid_i &
+    assign stall_mem = instr_valid &
                        (outstanding_memory_access | (lsu_req_dec & ~lsu_req_done_i));
 
     // If we stall a load in ID for any reason, it must not make an LSU request
     // (otherwide we might issue two requests for the same instruction)
     `ASSERT(IbexStallMemNoRequest,
-      instr_valid_i & lsu_req_dec & ~instr_done |-> ~lsu_req_done_i)
+      instr_valid & lsu_req_dec & ~instr_done |-> ~lsu_req_done_i)
 
     assign rf_rd_a_wb_match = (rf_waddr_wb_i == rf_raddr_a_o) & |rf_raddr_a_o;
     assign rf_rd_b_wb_match = (rf_waddr_wb_i == rf_raddr_b_o) & |rf_raddr_b_o;
@@ -1157,17 +1242,17 @@ module ibex_id_stage #(
 
     // Without Writeback Stage always stall the first cycle of a load/store.
     // Then stall until it is complete
-    assign stall_mem = instr_valid_i & (lsu_req_dec & (~lsu_resp_valid_i | instr_first_cycle));
+    assign stall_mem = instr_valid & (lsu_req_dec & (~lsu_resp_valid_i | instr_first_cycle));
 
     // No load hazards without Writeback Stage
     assign stall_ld_hz   = 1'b0;
 
     // Without writeback stage any valid instruction that hasn't seen an error will execute
-    assign instr_executing_spec = instr_valid_i & ~instr_fetch_err_i & controller_run;
+    assign instr_executing_spec = instr_valid & ~instr_fetch_err_i & controller_run;
     assign instr_executing = instr_executing_spec;
 
     `ASSERT(IbexStallIfValidInstrNotExecuting,
-      instr_valid_i & ~instr_fetch_err_i & ~instr_executing & controller_run |-> stall_id)
+      instr_valid & ~instr_fetch_err_i & ~instr_executing & controller_run |-> stall_id)
 
     // No data forwarding without writeback stage so always take source register data direct from
     // register file

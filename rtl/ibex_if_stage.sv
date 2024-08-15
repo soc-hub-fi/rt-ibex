@@ -48,7 +48,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   input  logic                        instr_bus_err_i,
   output logic                        instr_intg_err_o,
 
-  // CLIC interface
+  // CLIC interface 
   // Interrupts Selective Hardware Vectoring
   input logic  irq_shv_i,
   output logic minhv_o,
@@ -236,7 +236,7 @@ module ibex_if_stage import ibex_pkg::*; #(
       PC_EXC: begin                                                          // Abdesattar: Jump to handler
         if(CLIC && CLIC_SHV && irq_shv_i)                                 
           minhv_o = 1'b1;
-        fetch_addr_n = exc_pc; // set PC to exception handler
+          fetch_addr_n = exc_pc; // set PC to exception handler
       end                      
       PC_ERET: fetch_addr_n = csr_mepc_i;                   // restore PC when returning from EXC
       PC_DRET: fetch_addr_n = csr_depc_i;
