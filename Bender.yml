@@ -16,6 +16,7 @@ export_include_dirs:
 sources:
   - dv/uvm/core_ibex/common/prim/prim_buf.sv
   - vendor/lowrisc_ip/ip/prim/rtl/prim_ram_1p_pkg.sv
+  - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_buf.sv
   - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv
   - rtl/ibex_pkg.sv
   - rtl/ibex_tracer_pkg.sv
