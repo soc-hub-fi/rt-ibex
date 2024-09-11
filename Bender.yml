@@ -1,0 +1,66 @@
+package:
+  name: rt-ibex
+  authors:
+    - "lowRISC"
+    - "Abdesattar Kalache <abdesattar.kalache@tuni.fi>"
+    - "Antti Nurmi <antti.nurmi@tuni.fi>"
+
+#dependencies:
+#  tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.3 }
+#  common_cells: {git: "https://github.com/pulp-platform/common_cells.git", version: 1.24.0}
+
+sources:
+  - include_dirs:
+    - rtl
+    - shared/rtl
+    files:
+      - rtl/ibex_pkg.sv
+      - rtl/ibex_tracer_pkg.sv
+      - rtl/ibex_tracer.sv
+      - rtl/ibex_core_tracing.sv
+
+  - files:
+    - shared/rtl/prim_assert.sv
+    - rtl/rt_ibex_hw_stacking.sv 
+    - rtl/ibex_controller.sv
+    - rtl/ibex_compressed_decoder.sv
+    - rtl/ibex_decoder.sv
+    - rtl/ibex_multdiv_fast.sv
+    - rtl/ibex_prefetch_buffer.sv
+    - rtl/ibex_register_file_ff.sv
+    - rtl/ibex_register_file_latch.sv
+    - rtl/rt_ibex_register_window_ff.sv
+    - rtl/rt_ibex_register_window_latch.sv
+    - rtl/rt_ibex_pcs_lifo.sv
+    - rtl/rt_ibex_pcs_memory.sv
+    - rtl/rt_ibex_register_file_pcs.sv
+    - rtl/ibex_fetch_fifo.sv
+    - rtl/ibex_alu.sv
+    - rtl/ibex_counter.sv
+    - rtl/ibex_csr.sv
+    - rtl/ibex_cs_registers.sv
+    - rtl/ibex_if_stage.sv
+    - rtl/ibex_id_stage.sv
+    - rtl/ibex_ex_block.sv
+    - rtl/ibex_load_store_unit.sv
+    - rtl/ibex_wb_stage.sv
+    - rtl/ibex_core.sv
+    - rtl/ibex_top.sv
+
+  - target: all(xilinx)
+    files:
+      - rtl/ibex_register_file_fpga.sv
+      - rtl/rt_ibex_register_window_ff.sv
+
+  - target: not(all(xilinx))
+    files:
+      - rtl/ibex_register_file_latch.sv  
+      - rtl/ibex_register_file_ff.sv
+      - rtl/rt_ibex_register_window_latch.sv
+
+  - target: any(simulation, test)
+    files:
+      - rtl/rt_ibex_register_window_ff.sv
+      - rtl/ibex_register_file_ff.sv
+
+
