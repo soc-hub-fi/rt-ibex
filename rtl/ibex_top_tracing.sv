@@ -29,7 +29,7 @@ module ibex_top_tracing import ibex_pkg::*; #(
   parameter bit          HardwareStacking = 1'b0,
   parameter bit          RegisterWindowing= 1'b0,
   parameter int unsigned NUM_RegisterWindows = 4,
-  parameter int unsigned NUM_INTERRUPTS   = 64,
+  parameter int unsigned NumInterrupts   = 64,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
@@ -77,8 +77,8 @@ module ibex_top_tracing import ibex_pkg::*; #(
   //input  logic                         irq_external_i,
   //input  logic [14:0]                  irq_fast_i,
   //input  logic                         irq_nm_i,       // non-maskeable interrupt
-  input  logic [NUM_INTERRUPTS-1:0]    irq_i,
-  output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
+  input  logic [NumInterrupts-1:0]    irq_i,
+  output logic [$clog2(NumInterrupts)-1:0] irq_id_o,
   output logic                         irq_ack_o,
   input  logic [7:0]                   irq_level_i,
   input  logic                         irq_shv_i,
@@ -198,9 +198,7 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .DmExceptionAddr  ( DmExceptionAddr  ),
     .CLIC             ( CLIC             ),
     .HardwareStacking ( HardwareStacking ),
-    .RegisterWindowing( RegisterWindowing),
-    .NUM_RegisterWindows(NUM_RegisterWindows),
-    .NUM_INTERRUPTS   ( NUM_INTERRUPTS   )
+    .NumInterrupts    ( NumInterrupts    )
   ) u_ibex_top (
     .clk_i,
     .rst_ni,
