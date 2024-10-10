@@ -7,7 +7,7 @@ While we have attempted to keep our modifications unintrusive, we cannot guarant
 
 ## Contributing
 
-As RT-Ibex is still in an experimental state and under internal development, we do currently not take external contributions.
+As RT-Ibex is still in an experimental state and under internal development, we do currently not take external contributions
 
 
 # Original Ibex RISC-V Core

@@ -34,6 +34,7 @@ sources:
   - rtl/rt_ibex_pcs_memory.sv
   - rtl/rt_ibex_register_file_pcs.sv
   - rtl/ibex_fetch_fifo.sv
+  - rtl/ibex_branch_predict.sv
   - rtl/ibex_alu.sv
   - rtl/ibex_counter.sv
   - rtl/ibex_csr.sv
