@@ -19,8 +19,6 @@ sources:
   - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_buf.sv
   - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv
   - rtl/ibex_pkg.sv
-  - rtl/ibex_tracer_pkg.sv
-  - rtl/ibex_tracer.sv
   - rtl/rt_ibex_hw_stacking.sv 
   - rtl/ibex_controller.sv
   - rtl/ibex_compressed_decoder.sv
@@ -48,7 +46,11 @@ sources:
   - rtl/rt_ibex_register_window_ff.sv
   - rtl/ibex_core.sv
   - rtl/ibex_top.sv
-  - rtl/ibex_top_tracing.sv
+  - target: not(any(asic, synthesis))
+    files:
+      - rtl/ibex_tracer_pkg.sv
+      - rtl/ibex_tracer.sv
+      - rtl/ibex_top_tracing.sv
   - target: not(any(fpga, xilinx))
     files:
       - syn/rtl/prim_clock_gating.v
