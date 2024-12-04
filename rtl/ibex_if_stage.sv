@@ -231,19 +231,19 @@ module ibex_if_stage import ibex_pkg::*; #(
   always_comb begin : fetch_addr_mux
     minhv_o = 1'b0;
     unique case (pc_mux_internal)
-      PC_BOOT: fetch_addr_n = { boot_addr_i[31:8], 8'h80 };
+      PC_BOOT: fetch_addr_n = { boot_addr_i[31:9], 9'h100 };
       PC_JUMP: fetch_addr_n = branch_target_ex_i;
       PC_EXC: begin                                                          // Abdesattar: Jump to handler
-        if(CLIC && CLIC_SHV && irq_shv_i)                                 
+        if(CLIC && CLIC_SHV && irq_shv_i)
           minhv_o = 1'b1;
           fetch_addr_n = exc_pc; // set PC to exception handler
-      end                      
+      end
       PC_ERET: fetch_addr_n = csr_mepc_i;                   // restore PC when returning from EXC
       PC_DRET: fetch_addr_n = csr_depc_i;
       // Without branch predictor will never get pc_mux_internal == PC_BP. We still handle no branch
       // predictor case here to ensure redundant mux logic isn't synthesised.
       PC_BP:   fetch_addr_n = BranchPredictor ? predict_branch_pc : { boot_addr_i[31:8], 8'h80 };
-      default: fetch_addr_n = { boot_addr_i[31:8], 8'h80 };
+      default: fetch_addr_n = { boot_addr_i[31:9], 9'h100 };
     endcase
   end
 
