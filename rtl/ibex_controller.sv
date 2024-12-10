@@ -142,7 +142,7 @@ module ibex_controller #(
   // To/from hw stacking unit
   input  logic                  stacking_done_i,
   output logic                  stacking_start_o,
-  output ibex_pkg::hw_stacking_mode stacking_mode_o,
+  output ibex_pkg::hw_stacking_mode_t stacking_mode_o,
   input  logic                  stacking_mcause_pending_i,
   output logic                  stacking_ack_o,
 
