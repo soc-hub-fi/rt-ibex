@@ -536,7 +536,7 @@ end else if (RegFile == RegFileWindowFF) begin : gen_regfile_win_ff
         .WrenCheck        (RegFileWrenCheck),
         .RdataMuxCheck    (RegFileRdataMuxCheck),
         .WordZeroVal      (RegFileDataWidth'(prim_secded_pkg::SecdedInv3932ZeroWord)),
-        .NUM_RegisterWindows(NumPriorities),
+        .NumRegisterWindows(NumPriorities),
         .WindowSize(7) // TODO: Fix magic number
       ) register_file_i (
         .clk_i (clk),
@@ -576,7 +576,7 @@ end else if (RegFile == RegFileWindowLatch) begin : gen_regfile_win_latch
         .WrenCheck        (RegFileWrenCheck),
         .RdataMuxCheck    (RegFileRdataMuxCheck),
         .WordZeroVal      (RegFileDataWidth'(prim_secded_pkg::SecdedInv3932ZeroWord)),
-        .NUM_RegisterWindows(NumPriorities),
+        .NumRegisterWindows(NumPriorities),
         .WindowSize(7) // TODO: Fix magic number
       ) register_file_i (
         .clk_i (clk),

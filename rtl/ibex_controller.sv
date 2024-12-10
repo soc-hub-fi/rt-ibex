@@ -15,7 +15,7 @@ module ibex_controller #(
   parameter bit BranchPredictor = 1'b0,
   parameter bit MemECC          = 1'b0,
   parameter bit CLIC            = 1'b1,
-  parameter bit HardwareStacking= 1'b0, 
+  parameter bit HardwareStacking= 1'b0,
   parameter int unsigned NUM_INTERRUPTS = 64,
   parameter bit RegisterWindowing= 1'b0,
   parameter bit PCS              = 1'b0,
@@ -52,7 +52,7 @@ module ibex_controller #(
   // to IF-ID pipeline stage
   output logic                  instr_valid_clear_o,     // kill instr in IF-ID reg
   output logic                  id_in_ready_o,           // ID stage is ready for new instr
-  output logic                  id_in_ready_masked_o,    // masked version of id_in_ready_o,.useful in hw_stacking mode 
+  output logic                  id_in_ready_masked_o,    // masked version of id_in_ready_o,.useful in hw_stacking mode
   output logic                  controller_run_o,        // Controller is in standard instruction
                                                          // run mode
   input  logic                  instr_exec_i,            // Execution control, when clear ID/EX
@@ -100,7 +100,7 @@ module ibex_controller #(
   input  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl_i,
   input  logic        irq_req_ctrl_i,
   input  logic        irq_wu_ctrl_i,
-  input  ibex_pkg::mintstatus_t mintstatus_i, 
+  input  ibex_pkg::mintstatus_t mintstatus_i,
 
   output logic [1:0]            trap_addr_mux_o,
 
@@ -140,20 +140,20 @@ module ibex_controller #(
 
 
   // To/from hw stacking unit
-  input  logic                  stacking_done_i, 
-  output logic                  stacking_start_o, 
+  input  logic                  stacking_done_i,
+  output logic                  stacking_start_o,
   output ibex_pkg::hw_stacking_mode stacking_mode_o,
   input  logic                  stacking_mcause_pending_i,
   output logic                  stacking_ack_o,
 
   // To windowed register file
   output logic                 rf_increment_ptr_o,
-  output logic                 rf_decrement_ptr_o,                 
+  output logic                 rf_decrement_ptr_o,
   input  logic                 rf_window_full_i,
   output logic                 rfw_save_csr_o,
   output logic                 csr_fast_wrf_o,
 
-  // pcs support 
+  // pcs support
   output logic                  pcs_mret_o,
   output logic                  pcs_csr_restore_mret_id_o,
   input  logic                  pcs_restore_done_i,
@@ -537,7 +537,7 @@ module ibex_controller #(
 
     irq_ack_o              = 1'b0;
     irq_id_o               = '0;
-    
+
     ctrl_fsm_ns            = ctrl_fsm_cs;
 
     ctrl_busy_o            = 1'b1;
@@ -566,7 +566,7 @@ module ibex_controller #(
     rf_increment_ptr_o     = 1'b0;
     rf_decrement_ptr_o     = 1'b0;
     rfw_save_csr_o         = 1'b0;
-    csr_fast_wrf_o         = 1'b0;     
+    csr_fast_wrf_o         = 1'b0;
 
     pcs_mret_o                = 1'b0;
     pcs_csr_restore_mret_id_o = 1'b0;
@@ -623,7 +623,7 @@ module ibex_controller #(
         end
 
         // handle interrupts
-        if (handle_irq) begin                                                         
+        if (handle_irq) begin
           // We are handling an interrupt. Set halt_if to tell IF not to give
           // us any more instructions before it redirects to the handler, but
           // don't set flush_id: we must allow this instruction to complete
@@ -632,13 +632,13 @@ module ibex_controller #(
           halt_if     = 1'b1;
 
           // IRQ interface
-          pc_set_o          = 1'b1;                          
+          pc_set_o          = 1'b1;
 
-          exc_pc_mux_o      = EXC_PC_IRQ;            // Abdesattar: select signal of the first PC mux (exception selection mux), we are selecting which type of exception to pass to the second mux          
-          pc_mux_o          = PC_EXC;                // Abdesattar: select signal for the second mux, we are setting PC to exc_handler address              
+          exc_pc_mux_o      = EXC_PC_IRQ;            // Abdesattar: select signal of the first PC mux (exception selection mux), we are selecting which type of exception to pass to the second mux
+          pc_mux_o          = PC_EXC;                // Abdesattar: select signal for the second mux, we are setting PC to exc_handler address
           exc_cause_o       = irq_id_ctrl_i;         // Abdesattar: needed to calculate vector entry (in vectored/clic modes)
-          
-          irq_ack_o         = 1'b1;                  // Abdesattar: we shouldn't ack yet, at least not when in CLIC mode      
+
+          irq_ack_o         = 1'b1;                  // Abdesattar: we shouldn't ack yet, at least not when in CLIC mode
           irq_id_o          = irq_id_ctrl_i;         // Abdesattar: to be saved in mintstatus
           trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;   // to be saved in mstatus
           csr_save_cause_o  = 1'b1;
@@ -707,7 +707,7 @@ module ibex_controller #(
 
         // If entering debug mode or handling an IRQ the core needs to wait until any instruction in
         // ID or WB has finished executing. Stall IF during that time.
-        if ((enter_debug_mode || handle_irq) && (stall || id_wb_pending)) begin                // Abdesattar:  
+        if ((enter_debug_mode || handle_irq) && (stall || id_wb_pending)) begin
           halt_if = 1'b1;
         end
 
@@ -727,22 +727,22 @@ module ibex_controller #(
             // to the handler, but don't set flush_id: we must allow this
             // instruction to complete (since it might have outstanding loads
             // or stores).
-            
+
             // abort             = 1'b1;
             halt_if           = 1'b1;
             // pc_set_o          = 1'b1;      // pc_set_o should be reset since it causes the Prefetch Buffer to invalidate => pc_if_o lost
             pc_mux_o          = PC_EXC;
             exc_pc_mux_o      = EXC_PC_IRQ;
-            // exc_cause_o       = irq_id_ctrl_i;   //todo 
+            // exc_cause_o       = irq_id_ctrl_i;   //todo
 
-            
+
             // IRQ interface
             trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;
-            // csr_save_cause_o  = 1'b1; 
+            // csr_save_cause_o  = 1'b1;
             // csr_cause_o       = {1'b1,irq_id_ctrl_i};
             // csr_irq_level_o   = irq_level_ctrl_i;
-                            
-            //csr_save_id_o     = single_cycle_i ? 1'b0 : 1'b1;   
+
+            //csr_save_id_o     = single_cycle_i ? 1'b0 : 1'b1;
             //csr_save_if_o     = single_cycle_i ? 1'b1 : 1'b0;
           end
         end
@@ -761,10 +761,10 @@ module ibex_controller #(
 
         if (handle_irq) begin
           // abort             = 1'b1;
-          
+
 
           //csr_save_if_o    = 1'b1;
-          // 
+          //
 
           // Prioritise interrupts as required by the architecture
           if (irq_nm && !nmi_mode_q) begin
@@ -782,12 +782,12 @@ module ibex_controller #(
             //  // - first bit distinguishes interrupts from exceptions,
             //  // - second bit adds 16 to fast interrupt ID
             //  // for example ExcCauseIrqFast0 = {1'b1, 5'd16}
-            //  exc_cause_o = 
-            //    '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};//          
+            //  exc_cause_o =
+            //    '{irq_ext: 1'b1, irq_int: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, lower_cause: {1'b1, mfip_id}};//
             exc_pc_mux_o = EXC_PC_IRQ;
-          end 
+          end
           else begin
-            if(!CLIC) begin            // Better if we check for mtvec[1:0], but this is sufficient 
+            if(!CLIC) begin            // Better if we check for mtvec[1:0], but this is sufficient
               exc_pc_mux_o = EXC_PC_IRQ;
             end else begin
               exc_pc_mux_o = EXC_PC_IRQ_CLIC;
@@ -800,57 +800,57 @@ module ibex_controller #(
             end else if (ibex_irqs_i.irq_software) begin
               exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd03};
             end else if(ibex_irqs_i.irq_timer)begin // irqs_i.irq_timer
-              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd07}; 
+              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: 12'd07};
             end else begin
-              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: clic_exccode};  
-            end 
-          end 
+              exc_cause_o = '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: mintstatus_i.mil, cause: clic_exccode};
+            end
+          end
         end
 
-        csr_save_cause_o  = 1'b1; 
+        csr_save_cause_o  = 1'b1;
         csr_save_if_o     = 1'b1;
-    
+
         csr_cause_o       = {1'b1,irq_id_ctrl_i};
 
-        
+
         csr_irq_level_o   = irq_level_ctrl_i;
-        
-        irq_ack_o         = 1'b1;    
-        irq_id_o          = irq_id_ctrl_i;  
+
+        irq_ack_o         = 1'b1;
+        irq_id_o          = irq_id_ctrl_i;
 
       end
 
-      
-      LOAD_VTABLE_ENTRY: begin 
-        // IF-stage is decoupled from ID-stage in while in a context switch 
-        // While hardware stacking is in progress, the IF-stage is kept busy fetching interrupt vector entries followed by 
+
+      LOAD_VTABLE_ENTRY: begin
+        // IF-stage is decoupled from ID-stage in while in a context switch
+        // While hardware stacking is in progress, the IF-stage is kept busy fetching interrupt vector entries followed by
         // the first instruction in the interrupt handler.
-        // The first instruction is placed in IF-ID registers with its corresponding control signals 
-        pc_mux_o          = PC_EXC; 
+        // The first instruction is placed in IF-ID registers with its corresponding control signals
+        pc_mux_o          = PC_EXC;
         retain_id         = 1'b1;      // Halt id-stage
         mask_illegal_inst = 1'b1;      // Mask the illegal_instr signal raised by the compressed_decoder
                                        // RISC-V is a low density ISA => illegal instr highly likely
-        
+
         controller_run_o = 1'b1;       // Enables instruction execution in ID-stage for HW-stacking
         stacking_mode_o  = SAVE;
         stacking_run     = 1'b1;
 
-        if(if_instr_valid_i) begin    // An interrupt vector table entry has entered the pipeline 
+        if(if_instr_valid_i) begin    // An interrupt vector table entry has entered the pipeline
           pc_set_o         = 1'b1;    // The timing of pc_set_o is precise: an extra clock cycle => invalidating the first instruction of the interrupt handler
           exc_pc_mux_o     = EXC_PC_VTABLE;
 
-          if(HardwareStacking) begin 
+          if(HardwareStacking) begin
             ctrl_fsm_ns      = HW_STACK;
-          end else if(RegisterWindowing) begin 
-            if(!rf_window_full_i) begin 
-              rf_increment_ptr_o = 1'b1;    // Increment the register file window pointer 
-              rfw_save_csr_o     = 1'b1;    // push mcause/mepc into the auxiliary window 
-            end 
+          end else if(RegisterWindowing) begin
+            if(!rf_window_full_i) begin
+              rf_increment_ptr_o = 1'b1;    // Increment the register file window pointer
+              rfw_save_csr_o     = 1'b1;    // push mcause/mepc into the auxiliary window
+            end
             ctrl_fsm_ns        = DECODE;
           end else begin
             ctrl_fsm_ns      = DECODE;
-          end 
-        end 
+          end
+        end
       end  // LOAD_VTABLE_ENTRY
 
 
@@ -861,12 +861,12 @@ module ibex_controller #(
         ctrl_fsm_ns   = HW_STACK;
         stacking_run  = 1'b1;
 
-        
+
 
         if(stacking_done_i && !stall && !id_wb_pending) begin  // All hardware stacking instructions have retired
-          stacking_ack_o   = 1'b1;        // signal to the hw_stacking unit to get ready for a new interrupt 
+          stacking_ack_o   = 1'b1;        // signal to the hw_stacking unit to get ready for a new interrupt
           ctrl_fsm_ns      = DECODE;
-        end 
+        end
       end // HW_STACK
 
 
@@ -993,36 +993,36 @@ module ibex_controller #(
           endcase
         end else begin
           // special instructions and pipeline flushes
-          if (mret_insn) begin  
+          if (mret_insn) begin
             rf_decrement_ptr_o     = 1'b1;  // decrement register_window pointer (does not have an effect when register_windowing is disabled)
             csr_fast_wrf_o         = 1'b1;  // restore context CSRs from auxiliary registers (does not have an effect when register_windowing is disabled)
 
-            // MRET detected 
+            // MRET detected
             if(HardwareStacking) begin
               // If hardware register stacking is enabled, MRET executed is delayed
               // Hardware stacking unit is triggered in RESTORE mode
-              // Note that since the ID-stage will be populated with HW_stacking instructions, MRET will be killed or ignored and IF stage is halted 
+              // Note that since the ID-stage will be populated with HW_stacking instructions, MRET will be killed or ignored and IF stage is halted
               // A transition to a new state is required since this branch will not be entered in the next clock cycle
               stacking_start_o = 1'b1;
               stacking_mode_o  = RESTORE;
 
               ctrl_fsm_ns      = HWS_MRET;
-            end else if(PCS) begin 
+            end else if(PCS) begin
               // If PCS is enabled, MRET execution is delayed
               // RESTORE state of PCS is triggered
               // PCS does not required in-flight instructions. MRET is flushed and ID-stage is halted
               pcs_mret_o            = 1'b1;
               ctrl_fsm_ns           = PCS_MRET;
-            end else begin       
-              // If both HardwareStacking and PCS are disabled, MRET is executed immediately after entering the ID-stage  
+            end else begin
+              // If both HardwareStacking and PCS are disabled, MRET is executed immediately after entering the ID-stage
               pc_mux_o              = PC_ERET;
               pc_set_o              = 1'b1;
               csr_restore_mret_id_o = 1'b1;
               if (nmi_mode_q) begin
                 nmi_mode_d          = 1'b0; // exit NMI mode
               end
-          end               
-                         
+          end
+
           end else if (dret_insn) begin
             pc_mux_o              = PC_DRET;
             pc_set_o              = 1'b1;
@@ -1053,15 +1053,15 @@ module ibex_controller #(
       end // FLUSH
 
 
-      PCS_MRET: begin 
+      PCS_MRET: begin
         controller_run_o  = 1'b0;
         ctrl_fsm_ns           = PCS_MRET;
 
         if(pcs_restore_done_i) begin     // The state is restored from the pcs memory to pcs RegFile
           ctrl_fsm_ns         = DECODE;
 
-          pcs_csr_restore_mret_id_o = 1'b1;    // Restore MEPC and MCAUSE 
-          pc_mux_o              = PC_ERET;     // Return from interrupt handler 
+          pcs_csr_restore_mret_id_o = 1'b1;    // Restore MEPC and MCAUSE
+          pc_mux_o              = PC_ERET;     // Return from interrupt handler
           pc_set_o              = 1'b1;
         end
       end
@@ -1075,7 +1075,7 @@ module ibex_controller #(
         trap_addr_mux_o = TRAP_MACHINE;
 
         if(stacking_done_i && !stall && !id_wb_pending) begin  // All hardware stacking instructions have retired
-          stacking_ack_o   = 1'b1;        // signal to the hw_stacking unit to get ready for a new interrupt 
+          stacking_ack_o   = 1'b1;        // signal to the hw_stacking unit to get ready for a new interrupt
 
           // Execute the delayed MRET
           pc_mux_o              = PC_ERET;
@@ -1085,7 +1085,7 @@ module ibex_controller #(
             nmi_mode_d          = 1'b0; // exit NMI mode
           end
           ctrl_fsm_ns      = DECODE;
-        end 
+        end
       end
 
 
@@ -1113,12 +1113,12 @@ module ibex_controller #(
   // Stall control //
   ///////////////////
 
-  // Abort is registered to avoid comb loop nets between id and controller 
+  // Abort is registered to avoid comb loop nets between id and controller
   always_ff @(posedge clk_i or negedge rst_ni) begin : update_abort
     if (!rst_ni) begin
       abort_o  <= 1'b0;
     end else begin
-      abort_o  <= abort;             
+      abort_o  <= abort;
     end
   end
 

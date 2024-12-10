@@ -17,7 +17,7 @@ module rt_ibex_register_window_ff #(
   parameter bit                   WrenCheck         = 0,
   parameter bit                   RdataMuxCheck     = 0,
   parameter logic [DataWidth-1:0] WordZeroVal       = '0,
-  parameter int unsigned          NUM_RegisterWindows = 4,
+  parameter int unsigned          NumRegisterWindows = 4,
   parameter int unsigned          WindowSize        = 7
 ) (
   // Clock and Reset
@@ -60,13 +60,13 @@ module rt_ibex_register_window_ff #(
   // localparam int unsigned NUM_WORDS  = 2**ADDR_WIDTH;
 
   localparam int unsigned BASE_WINDOW_SIZE = RV32E ? 16 : 32;
-  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NUM_RegisterWindows * WindowSize;
+  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NumRegisterWindows * WindowSize;
   localparam int unsigned ADDR_WIDTH  = $clog2(NUM_WORDS);
-  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NUM_RegisterWindows);
+  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NumRegisterWindows);
 
 
-  logic [2*DataWidth-1:0] aux_mem[NUM_RegisterWindows];
-  logic [NUM_RegisterWindows-1:0] aux_we_a_dec;
+  logic [2*DataWidth-1:0] aux_mem[NumRegisterWindows];
+  logic [NumRegisterWindows-1:0] aux_we_a_dec;
 
   logic [DataWidth-1:0] rf_reg   [NUM_WORDS];
   logic [NUM_WORDS-1:0] we_a_dec;
@@ -75,26 +75,26 @@ module rt_ibex_register_window_ff #(
 
   // internal addresses
   logic [ADDR_WIDTH-1:0] raddr_a_int, raddr_b_int, waddr_a_int;
-  
-  logic [ADDR_WIDTH-1:0] window_ptr; 
+
+  logic [ADDR_WIDTH-1:0] window_ptr;
   logic [AUX_ADDR_WIDTH-1:0] aux_ptr;
 
   logic [$clog2(WindowSize)-1:0] offset_ra, offset_rb, offset_w;
   logic [ADDR_WIDTH-1:0] windowed_raddr_a, windowed_raddr_b, windowed_waddr;
 
-  logic [2*DataWidth-1:0]      aux_mem_q; 
+  logic [2*DataWidth-1:0]      aux_mem_q;
 
   logic  offset_sel;
   logic  is_eabi_ra, is_eabi_rb, is_eabi_w;
   logic  window_full;
 
-  
+
   assign window_full_o  = window_full;
 
-  assign window_full    = window_ptr == ((NUM_RegisterWindows-1) * WindowSize);
+  assign window_full    = window_ptr == ((NumRegisterWindows-1) * WindowSize);
 
 
-  always_comb begin 
+  always_comb begin
     is_eabi_ra = 1'b1;
     case (raddr_a_i)
       1:  offset_ra = 0; //  x1 : ra
@@ -104,15 +104,15 @@ module rt_ibex_register_window_ff #(
       12: offset_ra = 4; // x12 : a2
       13: offset_ra = 5; // x13 : a3
       15: offset_ra = 6; // x15 : t1
-      default: begin 
-        offset_ra = 0; 
+      default: begin
+        offset_ra = 0;
         is_eabi_ra = 1'b0;
-      end 
+      end
     endcase
-  end 
+  end
 
 
-  always_comb begin 
+  always_comb begin
     is_eabi_rb = 1'b1;
     case (raddr_b_i)
       1:  offset_rb = 0;  //  x1 : ra
@@ -122,15 +122,15 @@ module rt_ibex_register_window_ff #(
       12: offset_rb = 4; // x12 : a2
       13: offset_rb = 5; // x13 : a3
       15: offset_rb = 6; // x15 : t1
-      default: begin 
-        offset_rb = 0; 
+      default: begin
+        offset_rb = 0;
         is_eabi_rb = 1'b0;
-      end 
+      end
     endcase
-  end 
+  end
 
 
-  always_comb begin 
+  always_comb begin
     is_eabi_w = 1'b1;
     case (waddr_a_i)
       1:  offset_w = 0;  //  x1 : ra
@@ -140,12 +140,12 @@ module rt_ibex_register_window_ff #(
       12: offset_w = 4; // x12 : a2
       13: offset_w = 5; // x13 : a3
       15: offset_w = 6; // x15 : t1
-      default: begin 
-        offset_w = 0; 
+      default: begin
+        offset_w = 0;
         is_eabi_w = 1'b0;
-      end 
+      end
     endcase
-  end 
+  end
 
 
   assign windowed_raddr_a = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_ra;
@@ -166,13 +166,13 @@ module rt_ibex_register_window_ff #(
       if (increment_ptr_i) begin
         if(!(window_ptr == NUM_WORDS-WindowSize)) begin  // window_pointer is NOT pointing to the last window
           window_ptr <= window_ptr + WindowSize;
-        end 
-      end 
+        end
+      end
 
-      if(decrement_ptr_i) begin 
+      if(decrement_ptr_i) begin
         window_ptr <= window_ptr - WindowSize;
-      end 
-    end 
+      end
+    end
   end
 
 
@@ -182,15 +182,15 @@ module rt_ibex_register_window_ff #(
       aux_ptr   <= '0;
     end else begin
       if (increment_ptr_i) begin
-        if(!(aux_ptr == NUM_RegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
+        if(!(aux_ptr == NumRegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
           aux_ptr <= aux_ptr + 1;
-        end 
-      end 
+        end
+      end
 
-      if(decrement_ptr_i) begin 
+      if(decrement_ptr_i) begin
         aux_ptr <= aux_ptr - 1;
-      end 
-    end 
+      end
+    end
   end
 
 
@@ -201,9 +201,9 @@ module rt_ibex_register_window_ff #(
     end
   end
 
-  
+
   always_comb begin : aux_we_a_decoder
-    for (int unsigned i = 0; i < NUM_RegisterWindows; i++) begin
+    for (int unsigned i = 0; i < NumRegisterWindows; i++) begin
       aux_we_a_dec[i] = (aux_ptr == AUX_ADDR_WIDTH'(i)) ? save_csr_i : 1'b0;
     end
   end
@@ -270,7 +270,7 @@ module rt_ibex_register_window_ff #(
     assign aux_mem[i] = aux_rf_reg_q;
   end
 
-  
+
 
   // With dummy instructions enabled, R0 behaves as a real register but will always return 0 for
   // real instructions.
@@ -399,7 +399,7 @@ module rt_ibex_register_window_ff #(
     assign oh_raddr_a_err = 1'b0;
     assign oh_raddr_b_err = 1'b0;
 
-    assign aux_mem_q = aux_mem[aux_ptr];  
+    assign aux_mem_q = aux_mem[aux_ptr];
     assign mcause_o  = aux_mem_q[63:32];
     assign mepc_o    = aux_mem_q[31:0];
   end

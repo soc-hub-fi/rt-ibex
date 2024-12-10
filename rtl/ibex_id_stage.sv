@@ -27,7 +27,7 @@ module ibex_id_stage #(
   parameter bit               BranchPredictor = 0,
   parameter bit               MemECC          = 1'b0,
   parameter int unsigned      NUM_INTERRUPTS  = 64,
-  parameter bit               CLIC            = 1, 
+  parameter bit               CLIC            = 1,
   parameter bit               HardwareStacking= 1'b0,
   parameter bit               RegisterWindowing= 1'b0,
   parameter bit               PCS              = 1'b0
@@ -73,7 +73,7 @@ module ibex_id_stage #(
   input  logic [31:0]               pc_id_i,
 
 
-  // from/to hw stacking unit 
+  // from/to hw stacking unit
   input  logic                      stacking_done_i,
   input  logic [31:0]               stacking_instr_rdata_i,
   input  logic                      stacking_instr_valid_i,
@@ -82,7 +82,7 @@ module ibex_id_stage #(
   output ibex_pkg::hw_stacking_mode stacking_mode_o,
   input  logic                      id_mux_ctrl_i,
   input  logic                      stacking_mcause_pending_i,    // we are currently in the stage of executing mcause save/restore...
-                                                                  // don't allow late-arrival 
+                                                                  // don't allow late-arrival
   output logic                      stacking_ack_o,
 
 
@@ -241,10 +241,10 @@ module ibex_id_stage #(
 
   // To windowed register file
   output logic                 rf_increment_ptr_o,
-  output logic                 rf_decrement_ptr_o,                 
+  output logic                 rf_decrement_ptr_o,
   input  logic                 rf_window_full_i,
   output logic                 rfw_save_csr_o,
-  output logic                 csr_fast_wrf_o  
+  output logic                 csr_fast_wrf_o
 );
 
   import ibex_pkg::*;
@@ -285,7 +285,7 @@ module ibex_id_stage #(
   logic        stall_wb;
   logic        flush_id;
   logic        multicycle_done;
-  logic        single_cycle; 
+  logic        single_cycle;
 
   logic        mem_resp_intg_err;
 
@@ -355,7 +355,7 @@ module ibex_id_stage #(
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_ctrl;
 
   logic abort;
-  
+
   logic [31:0] instr_rdata;
   logic [31:0] instr_rdata_alu;
   logic        instr_valid;
@@ -517,7 +517,7 @@ module ibex_id_stage #(
     .clk_i (clk_i),
     .rst_ni(rst_ni),
 
-    // controller 
+    // controller
     .illegal_insn_o(illegal_insn_dec),
     .ebrk_insn_o   (ebrk_insn),
     .mret_insn_o   (mret_insn_dec),
@@ -624,13 +624,13 @@ module ibex_id_stage #(
 
   //generate
     //if (CLIC) begin : gen_int_controller
-  
+
       ibex_pkg::irqs_t           ibex_irqs_q;
       logic [NUM_INTERRUPTS-1:16] clic_irqs_q;
       logic                      irq_nm_q;
       //logic        irq_sec_q;
       logic [7:0]  irq_level;
-  
+
       // register all interrupt inputs
       always_ff @(posedge clk_i, negedge rst_ni) begin
         if (~rst_ni) begin
@@ -647,28 +647,28 @@ module ibex_id_stage #(
           irq_level   <= irq_level_i;
         end
       end
-  
+
       // In clic mode irq_i is one hot encoded (due to how clic is the only source
       // requesting interrupts). Turn this back into an integer.
       // TODO: probably better that we turn the irq_i signal back into an integer
       // how it used to be for clic mode
       localparam int unsigned IRQ_ID_WIDTH = $clog2(NUM_INTERRUPTS); //bin width
-  
-      for (genvar j = 0; j < IRQ_ID_WIDTH; j++) begin : jl
+
+      for (genvar j = 0; j < IRQ_ID_WIDTH; j++) begin : gen_jl
         logic [NUM_INTERRUPTS-1:0] tmp_mask;
-        for (genvar i = 0; i < NUM_INTERRUPTS; i++) begin : il
+        for (genvar i = 0; i < NUM_INTERRUPTS; i++) begin : gen_il
           logic [IRQ_ID_WIDTH-1:0] tmp_i;
           assign tmp_i = i;
           assign tmp_mask[i] = tmp_i[j];
         end
         assign irq_id_ctrl[j] = |(tmp_mask & {clic_irqs_q,
-                                              5'b0, 
+                                              5'b0,
                                               ibex_irqs_q.irq_external,
-                                              2'b0, 
+                                              2'b0,
                                               ibex_irqs_q.irq_timer,
-                                              3'b0, 
+                                              3'b0,
                                               ibex_irqs_q.irq_software,
-                                              3'b0 
+                                              3'b0
                                               });
       end
       // pragma translate_off
@@ -677,7 +677,7 @@ module ibex_id_stage #(
         $fatal(1, "[rt-ibex] More than two bit set in irq_i (one-hot)");
   `endif
       // pragma translate_on
-  
+
       // Check if the interrupt level of the current interrupt exceeds the current
       // irq threshold and global interrupt are enabled (otherwise it wont' fire).
       // The effective interrupt threshold is the maximum of mintstatus.mil and
@@ -685,16 +685,16 @@ module ibex_id_stage #(
       logic [7:0] max_thresh;
       logic irq_req_ctrl;
       logic irq_wu_ctrl;
-  
+
       assign max_thresh = mintthresh_i > mintstatus_i.mil ? mintthresh_i : mintstatus_i.mil;
       assign irq_req_ctrl = (irq_level > max_thresh) && (|{clic_irqs_q, ibex_irqs_q}) && m_irq_enable_i;
-  
+
       // tied to zero in CLIC mode
       assign mip_o = '0;
 
       // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
       assign irq_wu_ctrl = |({clic_irqs_q, ibex_irqs_q});
-  
+
     //end
   //endgenerate
 
@@ -719,13 +719,13 @@ module ibex_id_stage #(
 
   assign instr_valid = (id_mux_ctrl_i == 1'b1) ? stacking_instr_valid_i : instr_valid_i;
   assign instr_is_compressed = (id_mux_ctrl_i == 1'b1) ? stacking_instr_is_compressed_i : instr_is_compressed_i;
-  
+
 
 
   ibex_controller #(
     .WritebackStage (WritebackStage),
     .BranchPredictor(BranchPredictor),
-    .MemECC(MemECC), 
+    .MemECC(MemECC),
     .HardwareStacking(HardwareStacking),
     .RegisterWindowing(RegisterWindowing),
     .PCS(PCS)
@@ -831,25 +831,25 @@ module ibex_id_stage #(
 
     // Performance Counters
     .perf_jump_o   (perf_jump_o),
-    .perf_tbranch_o(perf_tbranch_o), 
+    .perf_tbranch_o(perf_tbranch_o),
 
-    // Hw stacking unit 
+    // Hw stacking unit
     .stacking_done_i(stacking_done_i),
     .stacking_start_o(stacking_start_o),
     .stacking_mode_o(stacking_mode_o),
     .stacking_mcause_pending_i(stacking_mcause_pending_i),
-    
+
     .id_in_ready_masked_o(id_in_ready_masked_o),
     .stacking_ack_o(stacking_ack_o),
 
     // To windowed register file
     .rf_increment_ptr_o(rf_increment_ptr_o),
-    .rf_decrement_ptr_o(rf_decrement_ptr_o),                 
+    .rf_decrement_ptr_o(rf_decrement_ptr_o),
     .rf_window_full_i(rf_window_full_i),
     .rfw_save_csr_o(rfw_save_csr_o),
     .csr_fast_wrf_o(csr_fast_wrf_o),
 
-    
+
     // pcs support
     .pcs_mret_o(pcs_mret_o),
     .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
@@ -1135,7 +1135,7 @@ module ibex_id_stage #(
 
     logic instr_kill;
 
-    assign multicycle_done = lsu_req_dec ? ~stall_mem : ex_valid_i;     
+    assign multicycle_done = lsu_req_dec ? ~stall_mem : ex_valid_i;
 
     // Is a memory access ongoing that isn't finishing this cycle
     assign outstanding_memory_access = (outstanding_load_wb_i | outstanding_store_wb_i) &
@@ -1298,7 +1298,7 @@ module ibex_id_stage #(
 
   // An instruction is ready to move to the writeback stage (or retire if there is no writeback
   // stage)
-  assign en_wb_o = instr_done;                                            
+  assign en_wb_o = instr_done;
 
   assign perf_mul_wait_o = stall_multdiv & mult_en_dec;
   assign perf_div_wait_o = stall_multdiv & div_en_dec;
