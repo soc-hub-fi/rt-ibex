@@ -657,14 +657,12 @@ module ibex_core import ibex_pkg::*; #(
       .clk_i (clk_i),
       .rst_ni(rst_ni),
 
-      
       .start_i(stacking_start),
       .ack_i(stacking_ack),
       .mode_i(stacking_mode),
       .instr_first_cycle_i(instr_first_cycle_id),
-      .instr_valid_clear_i(instr_valid_clear), 
-      .id_in_ready_i(id_in_ready), 
-
+      .instr_valid_clear_i(instr_valid_clear),
+      .id_in_ready_i(id_in_ready),
 
       .instr_valid_o(stacking_instr_valid),
       .instr_rdata_o(stacking_instr_rdata),
@@ -751,7 +749,7 @@ module ibex_core import ibex_pkg::*; #(
     .instr_fetch_err_plus2_i(instr_fetch_err_plus2),
     .illegal_c_insn_i       (illegal_c_insn_id),
     .mask_illegal_inst_o    (mask_illegal_inst),
-    .if_instr_valid_i       (if_instr_valid),    
+    .if_instr_valid_i       (if_instr_valid),
 
     .pc_id_i(pc_id),
 
