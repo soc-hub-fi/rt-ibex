@@ -18,7 +18,7 @@ module rt_ibex_register_window_latch #(
   parameter bit                   WrenCheck         = 0,
   parameter bit                   RdataMuxCheck     = 0,
   parameter logic [DataWidth-1:0] WordZeroVal       = '0,
-  parameter int unsigned          NUM_RegisterWindows = 4,
+  parameter int unsigned          NumRegisterWindows = 4,
   parameter int unsigned          WindowSize        = 7
 ) (
   // Clock and Reset
@@ -58,22 +58,22 @@ module rt_ibex_register_window_latch #(
 
   //localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
   localparam int unsigned BASE_WINDOW_SIZE = RV32E ? 16 : 32;
-  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NUM_RegisterWindows * WindowSize;
+  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NumRegisterWindows * WindowSize;
   localparam int unsigned ADDR_WIDTH  = $clog2(NUM_WORDS);
-  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NUM_RegisterWindows);
+  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NumRegisterWindows);
 
 
   logic [DataWidth-1:0] mem[NUM_WORDS];
-  logic [2*32-1:0] aux_mem[NUM_RegisterWindows];
+  logic [2*32-1:0] aux_mem[NumRegisterWindows];
 
   logic [NUM_WORDS-1:0] waddr_onehot_a;
-  logic [NUM_RegisterWindows-1:0] aux_waddr_onehot_a;
+  logic [NumRegisterWindows-1:0] aux_waddr_onehot_a;
   logic [2*32-1:0]      aux_mem_q;
 
   logic oh_raddr_a_err, oh_raddr_b_err, oh_we_err;
 
   logic [NUM_WORDS-1:1] mem_clocks;
-  logic [NUM_RegisterWindows-1:0] aux_mem_clocks;
+  logic [NumRegisterWindows-1:0] aux_mem_clocks;
 
   logic [DataWidth-1:0] wdata_a_q;
 
@@ -93,7 +93,7 @@ module rt_ibex_register_window_latch #(
 
   assign window_full_o  = window_full;
 
-  assign window_full    = window_ptr == ((NUM_RegisterWindows-1) * WindowSize);
+  assign window_full    = window_ptr == ((NumRegisterWindows-1) * WindowSize);
 
   always_comb begin
     is_eabi_ra = 1'b1;
@@ -185,7 +185,7 @@ module rt_ibex_register_window_latch #(
       aux_ptr   <= '0;
     end else begin
       if (increment_ptr_i) begin
-        if(!(aux_ptr == NUM_RegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
+        if(!(aux_ptr == NumRegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
           aux_ptr <= aux_ptr + 1;
         end
       end
@@ -344,7 +344,7 @@ module rt_ibex_register_window_latch #(
 
 
   always_comb begin : aux_wad
-    for (int i = 0; i < NUM_RegisterWindows; i++) begin : aux_wad_word_iter
+    for (int i = 0; i < NumRegisterWindows; i++) begin : aux_wad_word_iter
       if (save_csr_i && (aux_ptr == AUX_ADDR_WIDTH'(i))) begin
         aux_waddr_onehot_a[i] = 1'b1;
       end else begin
@@ -395,7 +395,7 @@ module rt_ibex_register_window_latch #(
   end
 
   // Individual clock gating (if integrated clock-gating cells are available)
-  for (genvar x = 0; x < NUM_RegisterWindows; x++) begin : gen_aux_cg_word_iter
+  for (genvar x = 0; x < NumRegisterWindows; x++) begin : gen_aux_cg_word_iter
     prim_clock_gating aux_cg_i (
         .clk_i     ( clk_int           ),
         .en_i      ( aux_waddr_onehot_a[x] ),
@@ -417,7 +417,7 @@ module rt_ibex_register_window_latch #(
 
 
 
-  for (genvar i = 0; i < NUM_RegisterWindows; i++) begin : g_auxrf_latches
+  for (genvar i = 0; i < NumRegisterWindows; i++) begin : g_auxrf_latches
     always_latch begin
       if (aux_mem_clocks[i]) begin
         aux_mem[i] = {mcause_i, mepc_i};

@@ -48,7 +48,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   input  logic                        instr_bus_err_i,
   output logic                        instr_intg_err_o,
 
-  // CLIC interface 
+  // CLIC interface
   // Interrupts Selective Hardware Vectoring
   input logic  irq_shv_i,
   output logic minhv_o,
@@ -199,7 +199,7 @@ module ibex_if_stage import ibex_pkg::*; #(
 
   assign unused_exc_cause = |{exc_cause.irq};
 
-  assign clic_vtable_entry_addr = { m_trap_base_addr_clic_shv_i[31:6], 6'b0} + {m_exc_vec_pc_mux_i, 2'b0};   
+  assign clic_vtable_entry_addr = { m_trap_base_addr_clic_shv_i[31:6], 6'b0} + {m_exc_vec_pc_mux_i, 2'b0};
 
   // exception PC selection mux
   always_comb begin : exc_pc_mux
@@ -211,14 +211,14 @@ module ibex_if_stage import ibex_pkg::*; #(
     end
 
     unique case (exc_pc_mux_i)
-      EXC_PC_EXC:     exc_pc = { csr_mtvec_i[31:8], 8'h00                };    // Abdesattar: Basic mode
-      EXC_PC_IRQ:     exc_pc = { csr_mtvec_i[31:8], 1'b0, irq_vec, 2'b00 };    // Abdesattar: Vectored mode
+      EXC_PC_EXC:     exc_pc = { csr_mtvec_i[31:8], 8'h00                };    //   Basic mode
+      EXC_PC_IRQ:     exc_pc = { csr_mtvec_i[31:8], 1'b0, irq_vec, 2'b00 };    //   Vectored mode
       EXC_PC_DBD:     exc_pc = DmHaltAddr;
       EXC_PC_DBG_EXC: exc_pc = DmExceptionAddr;
-      EXC_PC_IRQ_CLIC:exc_pc = (CLIC && CLIC_SHV && irq_shv_i ) ? clic_vtable_entry_addr : { csr_mtvec_i[31:6], 6'b0};                                                                        // Abdesattar: todo CLIC mode fetch vector table entry (i.e mtvt<<6+4*excode) as an instruction
-                                                                                                                          // Abdesattar: todo CLIC mode set pc to the previouvly fetched table entry
+      EXC_PC_IRQ_CLIC:exc_pc = (CLIC && CLIC_SHV && irq_shv_i ) ? clic_vtable_entry_addr : { csr_mtvec_i[31:6], 6'b0};  // todo CLIC mode fetch vector table entry (i.e mtvt<<6+4*excode) as an instruction
+                                                                                                                          //todo CLIC mode set pc to the previouvly fetched table entry
       EXC_PC_VTABLE:  exc_pc = if_instr_rdata & 32'hfffffffc;        // .4bytes aligned
-      default:        exc_pc = { csr_mtvec_i[31:8], 8'h00                };   // Abdesattar: Basic mode by default
+      default:        exc_pc = { csr_mtvec_i[31:8], 8'h00                };   //   Basic mode by default
     endcase
   end
 
@@ -233,7 +233,7 @@ module ibex_if_stage import ibex_pkg::*; #(
     unique case (pc_mux_internal)
       PC_BOOT: fetch_addr_n = { boot_addr_i[31:9], 9'h100 };
       PC_JUMP: fetch_addr_n = branch_target_ex_i;
-      PC_EXC: begin                                                          // Abdesattar: Jump to handler
+      PC_EXC: begin                                                          //   Jump to handler
         if(CLIC && CLIC_SHV && irq_shv_i)
           minhv_o = 1'b1;
           fetch_addr_n = exc_pc; // set PC to exception handler
@@ -251,7 +251,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   assign csr_mtvec_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
 
   // tell CS register file to initialize mtvt on boot
-  assign csr_mtvt_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;    // Abdesattar: might cause problems later 
+  assign csr_mtvt_init_o = (pc_mux_i == PC_BOOT) & pc_set_i;
 
   // SEC_CM: BUS.INTEGRITY
   if (MemECC) begin : g_mem_ecc
@@ -510,7 +510,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   // Valid is held until it is explicitly cleared (due to an instruction completing or an exception)
   assign instr_valid_id_d = (if_instr_valid & id_in_ready_i & ~pc_set_i) |
                             (instr_valid_id_q & ~instr_valid_clear_i);
-  assign instr_new_id_d   = if_instr_valid & id_in_ready_i;                
+  assign instr_new_id_d   = if_instr_valid & id_in_ready_i;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -527,7 +527,7 @@ module ibex_if_stage import ibex_pkg::*; #(
   assign instr_new_id_o   = instr_new_id_q;
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
-  assign if_id_pipe_reg_we = instr_new_id_d;                              
+  assign if_id_pipe_reg_we = instr_new_id_d;
 
   if (ResetAll) begin : g_instr_rdata_ra
     always_ff @(posedge clk_i or negedge rst_ni) begin

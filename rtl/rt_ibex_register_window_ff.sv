@@ -17,7 +17,7 @@ module rt_ibex_register_window_ff #(
   parameter bit                   WrenCheck         = 0,
   parameter bit                   RdataMuxCheck     = 0,
   parameter logic [DataWidth-1:0] WordZeroVal       = '0,
-  parameter int unsigned          NUM_RegisterWindows = 4,
+  parameter int unsigned          NumRegisterWindows = 4,
   parameter int unsigned          WindowSize        = 7
 ) (
   // Clock and Reset
@@ -60,13 +60,13 @@ module rt_ibex_register_window_ff #(
   // localparam int unsigned NUM_WORDS  = 2**ADDR_WIDTH;
 
   localparam int unsigned BASE_WINDOW_SIZE = RV32E ? 16 : 32;
-  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NUM_RegisterWindows * WindowSize;
+  localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NumRegisterWindows * WindowSize;
   localparam int unsigned ADDR_WIDTH  = $clog2(NUM_WORDS);
-  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NUM_RegisterWindows);
+  localparam int unsigned AUX_ADDR_WIDTH = $clog2(NumRegisterWindows);
 
 
-  logic [2*DataWidth-1:0] aux_mem[NUM_RegisterWindows];
-  logic [NUM_RegisterWindows-1:0] aux_we_a_dec;
+  logic [2*DataWidth-1:0] aux_mem[NumRegisterWindows];
+  logic [NumRegisterWindows-1:0] aux_we_a_dec;
 
   logic [DataWidth-1:0] rf_reg   [NUM_WORDS];
   logic [NUM_WORDS-1:0] we_a_dec;
@@ -91,7 +91,7 @@ module rt_ibex_register_window_ff #(
 
   assign window_full_o  = window_full;
 
-  assign window_full    = window_ptr == ((NUM_RegisterWindows-1) * WindowSize);
+  assign window_full    = window_ptr == ((NumRegisterWindows-1) * WindowSize);
 
 
   always_comb begin
@@ -182,7 +182,7 @@ module rt_ibex_register_window_ff #(
       aux_ptr   <= '0;
     end else begin
       if (increment_ptr_i) begin
-        if(!(aux_ptr == NUM_RegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
+        if(!(aux_ptr == NumRegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
           aux_ptr <= aux_ptr + 1;
         end
       end
@@ -203,7 +203,7 @@ module rt_ibex_register_window_ff #(
 
 
   always_comb begin : aux_we_a_decoder
-    for (int unsigned i = 0; i < NUM_RegisterWindows; i++) begin
+    for (int unsigned i = 0; i < NumRegisterWindows; i++) begin
       aux_we_a_dec[i] = (aux_ptr == AUX_ADDR_WIDTH'(i)) ? save_csr_i : 1'b0;
     end
   end

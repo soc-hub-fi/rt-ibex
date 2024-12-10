@@ -14,7 +14,7 @@ module rt_ibex_hw_stacking import ibex_pkg::*; #(
 
     input logic            start_i,
     input logic            ack_i,
-    input hw_stacking_mode mode_i,
+    input hw_stacking_mode_t mode_i,
     input logic            instr_first_cycle_i,
     input logic            instr_valid_clear_i,
     input logic            id_in_ready_i,

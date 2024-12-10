@@ -654,9 +654,9 @@ module ibex_id_stage #(
       // how it used to be for clic mode
       localparam int unsigned IRQ_ID_WIDTH = $clog2(NUM_INTERRUPTS); //bin width
 
-      for (genvar j = 0; j < IRQ_ID_WIDTH; j++) begin : jl
+      for (genvar j = 0; j < IRQ_ID_WIDTH; j++) begin : gen_jl
         logic [NUM_INTERRUPTS-1:0] tmp_mask;
-        for (genvar i = 0; i < NUM_INTERRUPTS; i++) begin : il
+        for (genvar i = 0; i < NUM_INTERRUPTS; i++) begin : gen_il
           logic [IRQ_ID_WIDTH-1:0] tmp_i;
           assign tmp_i = i;
           assign tmp_mask[i] = tmp_i[j];

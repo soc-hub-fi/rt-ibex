@@ -319,20 +319,20 @@ package ibex_pkg;
     EXC_PC_IRQ,
     EXC_PC_DBD,
     EXC_PC_DBG_EXC, // Exception while in debug mode
-    EXC_PC_IRQ_CLIC, 
+    EXC_PC_IRQ_CLIC,
     EXC_PC_VTABLE
   } exc_pc_sel_e;
 
 
   //////////////////////////////
-  // Hardware Stacking Unit 
+  // Hardware Stacking Unit
   ///////////////////////////////
 
 
   typedef enum logic {
     SAVE,
     RESTORE
-  } hw_stacking_mode;
+  } hw_stacking_mode_t;
 
 
   // typedef enum logic [31:0] {
@@ -345,27 +345,27 @@ package ibex_pkg;
 
 
   typedef struct packed{
-    logic [11:0] imm; 
-    logic [4:0]  base;      
+    logic [11:0] imm;
+    logic [4:0]  base;
     logic [2:0]  func3;
-    logic [4:0]  dest;  
+    logic [4:0]  dest;
     opcode_e     opcode;
   } load_sp_t;
-  
-  
+
+
   typedef struct packed{
-    logic [6:0]  imm; 
-    logic [4:0]  src;  
-    logic [4:0]  base;      
+    logic [6:0]  imm;
+    logic [4:0]  src;
+    logic [4:0]  base;
     logic [2:0]  func3;
-    logic [4:0]  imm2; 
+    logic [4:0]  imm2;
     opcode_e     opcode;
   } store_sp_t;
-  
+
 
   parameter logic [31:0] Alloc_stack_instr   = 32'hFDC10113;
   parameter logic [31:0] Dealloc_stack_instr = 32'h02410113;
-  
+
 
 
   /////////////////////////////////////////////////////////

@@ -145,11 +145,11 @@ module ibex_cs_registers #(
   input  logic                 dside_wait_i,                // core waiting for the dside
   input  logic                 mul_wait_i,                  // core waiting for multiply
   input  logic                 div_wait_i,                  // core waiting for divide
-  
-  // From/To LSU/HW_STACKING_UNIT 
+
+  // From/To LSU/HW_STACKING_UNIT
   input  logic                 csr_fast_lsu_i,
   input  logic                 stacking_csr_select_i,
-  input  logic [31:0]          lsu_rdata_i, 
+  input  logic [31:0]          lsu_rdata_i,
   input  logic                 lsu_rdata_valid_i ,
 
 
@@ -372,7 +372,7 @@ module ibex_cs_registers #(
             ((~CLIC_SHV) || (~irq_shv_q));
 
   assign unused_boot_addr = boot_addr_i[7:0];
-  
+
   assign mtvec_mode_o = MTVEC_MODE; // TODO: add support for vectored and CLIC mtvec mode
   assign csr_mtvt_o   = mtvt_q;
   assign mintstatus_o = mintstatus_q;
@@ -423,19 +423,19 @@ module ibex_cs_registers #(
     csr_mie_we    = 1'b1;
 
     // Writes to mie are ignored while in CLIC mode
-    case (csr_op_i)
-      CSR_OP_WRITE: begin 
+    unique case (csr_op_i)
+      CSR_OP_WRITE: begin
         csr_mie_wdata = csr_wdata_i;
-        csr_mie_we    = CLIC ? 1'b0 : 1'b1; 
-      end 
-      CSR_OP_SET: begin    
+        csr_mie_we    = CLIC ? 1'b0 : 1'b1;
+      end
+      CSR_OP_SET: begin
         csr_mie_wdata = csr_wdata_i | mie_q;
-        csr_mie_we    = CLIC ? 1'b0 : 1'b1; 
-      end 
-      CSR_OP_CLEAR: begin  
+        csr_mie_we    = CLIC ? 1'b0 : 1'b1;
+      end
+      CSR_OP_CLEAR: begin
         csr_mie_wdata = (~csr_wdata_i) & mie_q;
-        csr_mie_we    = CLIC ? 1'b0 : 1'b1; 
-      end 
+        csr_mie_we    = CLIC ? 1'b0 : 1'b1;
+      end
       CSR_OP_READ: begin
         csr_mie_wdata = CLIC ? {32'b0} : csr_wdata_i;
         csr_mie_we    = 1'b0;
@@ -509,7 +509,7 @@ module ibex_cs_registers #(
       CSR_MEPC: csr_rdata_int = mepc_q;
 
       // mcause: exception cause
-      CSR_MCAUSE: 
+      CSR_MCAUSE:
         if (CLIC) begin
           csr_rdata_int = { mcause_q.irq,
                             mcause_q.minhv,
@@ -547,7 +547,7 @@ module ibex_cs_registers #(
           csr_rdata_int[31:8] = mtvt_q;
           csr_rdata_int[ 7:2] = irq_id_instant_q;
           csr_rdata_int[ 1:0] = '0; // XLEN is fixed to 32, so XLEN/8 = 4
-        end else begin 
+        end else begin
           // to check if irq_q is onehot signal
           `ifndef VERILATOR
             assert final ($onehot0(irq_q)) else
@@ -806,9 +806,9 @@ module ibex_cs_registers #(
             //$fatal("PRIVELAGE TO USER MODE!?");
           end
         end
-        
+
         // interrupt enable
-        CSR_MIE: 
+        CSR_MIE:
           if (!CLIC)
             mie_en = 1'b1;
 
@@ -820,7 +820,7 @@ module ibex_cs_registers #(
         // mcause
         CSR_MCAUSE: begin
           mcause_en = 1'b1;
-          if (CLIC) begin 
+          if (CLIC) begin
             mcause_d = '{ irq         : csr_wdata_int[31],
                           minhv       : csr_wdata_int[30],
                           mpp         : csr_wdata_int[29:28],
@@ -834,7 +834,7 @@ module ibex_cs_registers #(
             //mcause_d = '{irq_ext : csr_wdata_int[31:30] == 2'b10,
             //             irq_int : csr_wdata_int[31:30] == 2'b11,
             //             lower_cause: csr_wdata_int[4:0]};
-        end 
+        end
         // TODO: CLIC
 
         // mtval: trap value
@@ -928,16 +928,16 @@ module ibex_cs_registers #(
     // exception controller gets priority over other writes
     unique case (1'b1)
       csr_fast_lsu_i: begin
-        if(lsu_rdata_valid_i) begin 
-          if(stacking_csr_select_i) begin   // save mepc 
+        if(lsu_rdata_valid_i) begin
+          if(stacking_csr_select_i) begin   // save mepc
             mepc_en        = 1'b1;
             mepc_d         = lsu_rdata_i;
-          end else begin 
+          end else begin
             mcause_en      = 1'b1;
             mcause_d       = lsu_rdata_i;
-          end 
-        end 
-      end 
+          end
+        end
+      end
 
       csr_save_cause_i: begin
         unique case (1'b1)
@@ -982,7 +982,7 @@ module ibex_cs_registers #(
           // save previous status for recoverable NMI
           mstack_en      = 1'b1;
 
-          // Save the interrupt's priority level 
+          // Save the interrupt's priority level
           mintstatus_en  = 1'b1;
           mintstatus_d.mil = irq_level_i;
 
@@ -1029,13 +1029,13 @@ module ibex_cs_registers #(
           mcause_en      = 1'b1;
           mcause_d       = mstack_cause_q;
         end else begin
-          // otherwise restore interrupt prio levels 
+          // otherwise restore interrupt prio levels
           mcause_d.mpil = mintstatus_q.mil;
           mintstatus_d.mil = mcause_q.mpil;
-          
+
           // set mstatus.MPIE/MPP
           mstatus_d.mpie = 1'b1;
-          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode  
+          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode
         end
       end // csr_restore_mret_i
 
@@ -1090,7 +1090,7 @@ module ibex_cs_registers #(
 
   // Qualify incoming interrupt requests in mip CSR with mie CSR for controller and to re-enable
   // clock upon WFI (must be purely combinational).
-  //assign ibex_irqs_o        = 
+  //assign ibex_irqs_o        =
   assign irq_pending_o = |mip & mie_q;;
 
   ////////////////////////
@@ -1106,7 +1106,7 @@ module ibex_cs_registers #(
                                           mprv: 1'b0,
                                           tw:   1'b0};
   ibex_csr #(
-    .Width     ($bits(status_t)), 
+    .Width     ($bits(status_t)),
     .ShadowCopy(ShadowCSR),
     .ResetValue({MSTATUS_RST_VAL})
   ) u_mstatus_csr (
