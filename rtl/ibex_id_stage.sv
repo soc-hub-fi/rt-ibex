@@ -79,7 +79,7 @@ module ibex_id_stage #(
   input  logic                      stacking_instr_valid_i,
   input  logic                      stacking_instr_is_compressed_i,
   output logic                      stacking_start_o,
-  output ibex_pkg::hw_stacking_mode stacking_mode_o,
+  output ibex_pkg::hw_stacking_mode_t stacking_mode_o,
   input  logic                      id_mux_ctrl_i,
   input  logic                      stacking_mcause_pending_i,    // we are currently in the stage of executing mcause save/restore...
                                                                   // don't allow late-arrival

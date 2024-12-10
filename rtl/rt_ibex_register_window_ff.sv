@@ -256,7 +256,7 @@ module rt_ibex_register_window_ff #(
   end
 
     // No flops for R0 as it's hard-wired to 0
-  for (genvar i = 1; i < NUM_RegisterWindows; i++) begin : g_rf_flops_aux
+  for (genvar i = 1; i < NumRegisterWindows; i++) begin : g_rf_flops_aux
     logic [2*DataWidth-1:0] aux_rf_reg_q;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
