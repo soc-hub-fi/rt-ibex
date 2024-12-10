@@ -45,7 +45,7 @@ module ibex_core import ibex_pkg::*; #(
   parameter bit          HardwareStacking  = 1'b0,
   parameter bit          RegisterWindowing = 1'b0,
   parameter bit          PCS               = 1'b0,
-  parameter int unsigned NUM_RegisterWindows = 4,
+  parameter int unsigned NumRegisterWindows = 4,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32,
   parameter int unsigned DmHaltAddr        = 32'h1A110800,
   parameter int unsigned DmExceptionAddr   = 32'h1A110808,
@@ -438,7 +438,7 @@ module ibex_core import ibex_pkg::*; #(
   // Hw stacking
   logic             stacking_start;
   logic             stacking_ack;
-  hw_stacking_mode  stacking_mode;
+  hw_stacking_mode_t  stacking_mode;
 
   logic             stacking_instr_valid;
   logic [31:0]      stacking_instr_rdata;

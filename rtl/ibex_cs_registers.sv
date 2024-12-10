@@ -1091,7 +1091,7 @@ module ibex_cs_registers #(
   // Qualify incoming interrupt requests in mip CSR with mie CSR for controller and to re-enable
   // clock upon WFI (must be purely combinational).
   //assign ibex_irqs_o        =
-  assign irq_pending_o = |mip & mie_q;;
+  assign irq_pending_o = |mip & mie_q;
 
   ////////////////////////
   // CSR instantiations //
