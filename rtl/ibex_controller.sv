@@ -608,6 +608,7 @@ module ibex_controller #(
 
         // normal execution flow
         // in debug mode or single step mode we leave immediately (wfi=nop)
+        // wake-up from sleep on NMI, internal interrupts for CLINT, all interrupts for CLIC, and debug requests
         if (handle_irq || irq_nm || irq_pending_i || debug_req_i || debug_mode_q || debug_single_step_i) begin
           ctrl_fsm_ns = FIRST_FETCH;
         end else begin
@@ -628,26 +629,27 @@ module ibex_controller #(
           // us any more instructions before it redirects to the handler, but
           // don't set flush_id: we must allow this instruction to complete
           // (since it might have outstanding loads or stores).
+          // Control should not be transfered to DECODE, otherwise the fetched CLIC vector entry is likely to be interpreted as an illegal_instr
           ctrl_fsm_ns = IRQ_TAKEN;
           halt_if     = 1'b1;
 
           // IRQ interface
           // pc_set_o          = 1'b1;
 
-          exc_pc_mux_o      = EXC_PC_IRQ;            // Abdesattar: select signal of the first PC mux (exception selection mux), we are selecting which type of exception to pass to the second mux
-          pc_mux_o          = PC_EXC;                // Abdesattar: select signal for the second mux, we are setting PC to exc_handler address
-          // exc_cause_o       = irq_id_ctrl_i;         // Abdesattar: needed to calculate vector entry (in vectored/clic modes)
+          exc_pc_mux_o      = EXC_PC_IRQ;
+          pc_mux_o          = PC_EXC;
+          // exc_cause_o       = irq_id_ctrl_i;
 
-          // irq_ack_o         = 1'b1;                  // Abdesattar: we shouldn't ack yet, at least not when in CLIC mode
-          // irq_id_o          = irq_id_ctrl_i;         // Abdesattar: to be saved in mintstatus
+          // irq_ack_o         = 1'b1;                  // We shouldn't ack yet, at least not when in CLIC mode
+          // irq_id_o          = irq_id_ctrl_i;
           trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;   // to be saved in mstatus
           // csr_save_cause_o  = 1'b1;
           // csr_cause_o       = {1'b1,irq_id_ctrl_i};
           // csr_irq_level_o   = irq_level_ctrl_i;
           // csr_save_if_o     = 1'b1;
         end
-                                                    // Abdesattar: todo At this point an extra fsm state is required for CLIC fetch : SECOND_FETCH
-        // enter debug mode                           // Control should not be transfered to DECODE, otherwise the fetched CLIC vector entry is likely to be interpreted as an illegal_instr
+
+        // enter debug mode
         if (enter_debug_mode) begin
           ctrl_fsm_ns = DBG_TAKEN_IF;
           // Halt IF only for now, ID will be flushed in DBG_TAKEN_IF as the
