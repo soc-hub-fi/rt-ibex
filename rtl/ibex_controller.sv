@@ -632,19 +632,19 @@ module ibex_controller #(
           halt_if     = 1'b1;
 
           // IRQ interface
-          pc_set_o          = 1'b1;
+          // pc_set_o          = 1'b1;
 
           exc_pc_mux_o      = EXC_PC_IRQ;            // Abdesattar: select signal of the first PC mux (exception selection mux), we are selecting which type of exception to pass to the second mux
           pc_mux_o          = PC_EXC;                // Abdesattar: select signal for the second mux, we are setting PC to exc_handler address
-          exc_cause_o       = irq_id_ctrl_i;         // Abdesattar: needed to calculate vector entry (in vectored/clic modes)
+          // exc_cause_o       = irq_id_ctrl_i;         // Abdesattar: needed to calculate vector entry (in vectored/clic modes)
 
-          irq_ack_o         = 1'b1;                  // Abdesattar: we shouldn't ack yet, at least not when in CLIC mode
-          irq_id_o          = irq_id_ctrl_i;         // Abdesattar: to be saved in mintstatus
+          // irq_ack_o         = 1'b1;                  // Abdesattar: we shouldn't ack yet, at least not when in CLIC mode
+          // irq_id_o          = irq_id_ctrl_i;         // Abdesattar: to be saved in mintstatus
           trap_addr_mux_o   = priv_mode_i == PRIV_LVL_U ? TRAP_USER : TRAP_MACHINE;   // to be saved in mstatus
-          csr_save_cause_o  = 1'b1;
-          csr_cause_o       = {1'b1,irq_id_ctrl_i};
-          csr_irq_level_o   = irq_level_ctrl_i;
-          csr_save_if_o     = 1'b1;
+          // csr_save_cause_o  = 1'b1;
+          // csr_cause_o       = {1'b1,irq_id_ctrl_i};
+          // csr_irq_level_o   = irq_level_ctrl_i;
+          // csr_save_if_o     = 1'b1;
         end
                                                     // Abdesattar: todo At this point an extra fsm state is required for CLIC fetch : SECOND_FETCH
         // enter debug mode                           // Control should not be transfered to DECODE, otherwise the fetched CLIC vector entry is likely to be interpreted as an illegal_instr
