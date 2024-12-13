@@ -94,6 +94,7 @@ module ibex_top import ibex_pkg::*; #(
 
   // Debug Interface
   input  logic                         debug_req_i,
+  output logic                         debug_mode_o,
   output crash_dump_t                  crash_dump_o,
   output logic                         double_fault_seen_o,
 
@@ -412,6 +413,7 @@ module ibex_top import ibex_pkg::*; #(
     .csr_mcause_o (mcause_csr),
 
     .debug_req_i,
+    .debug_mode_o,
     .crash_dump_o,
     .double_fault_seen_o,
 

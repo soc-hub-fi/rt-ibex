@@ -123,6 +123,7 @@ module ibex_core import ibex_pkg::*; #(
 
   // Debug Interface
   input  logic                         debug_req_i,
+  output logic                         debug_mode_o,
   output crash_dump_t                  crash_dump_o,
   // SEC_CM: EXCEPTION.CTRL_FLOW.LOCAL_ESC
   // SEC_CM: EXCEPTION.CTRL_FLOW.GLOBAL_ESC
@@ -461,6 +462,7 @@ module ibex_core import ibex_pkg::*; #(
   assign csr_mcause_o = csr_mcause;
   assign csr_mepc_o   = csr_mepc;
 
+  assign debug_mode_o = debug_mode;
 
   assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
     ? exc_cause.cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param

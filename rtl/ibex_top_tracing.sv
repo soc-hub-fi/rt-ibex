@@ -92,6 +92,7 @@ module ibex_top_tracing import ibex_pkg::*; #(
 
   // Debug Interface
   input  logic                         debug_req_i,
+  output logic                         debug_mode_o,
   output crash_dump_t                  crash_dump_o,
   output logic                         double_fault_seen_o,
 
@@ -250,6 +251,7 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .scramble_req_o,
 
     .debug_req_i,
+    .debug_mode_o,
     .crash_dump_o,
     .double_fault_seen_o,
 
