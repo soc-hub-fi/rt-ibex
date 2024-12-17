@@ -18,6 +18,7 @@ sources:
   - vendor/lowrisc_ip/ip/prim/rtl/prim_ram_1p_pkg.sv
   - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_buf.sv
   - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_cipher_pkg.sv
   - rtl/ibex_pkg.sv
   - rtl/rt_ibex_hw_stacking.sv 
   - rtl/ibex_controller.sv
