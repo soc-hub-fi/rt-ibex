@@ -641,7 +641,6 @@ end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
     rt_ibex_register_file_pcs #(
       .RV32E            (RV32E),
       .DataWidth        (RegFileDataWidth),
-      .pcsType          (MemoryPCS),
       .IrqLevelWidth    (NumPriorities)
     ) register_file_i (
       .clk_i       (clk),
