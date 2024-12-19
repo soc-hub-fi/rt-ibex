@@ -65,7 +65,7 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
   logic restore_en;
 
   if ( PCSType == MemoryPCS ) begin : gen_memory_impl
-    pcs_memory #(
+    rt_ibex_pcs_memory #(
       .NrSavedRegs   (NrSavedRegs),
       .DataWidth     (DataWidth),
       .IrqLevelWidth (IrqLevelWidth)
@@ -81,7 +81,7 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
       .next_mret_i   (next_mret_i)
     );
   end else if ( PCSType == ShiftRegPCS ) begin : gen_shift_reg_impl
-    pcs_shift_reg #(
+    rt_ibex_pcs_lifo #(
       .NrSavedRegs   (NrSavedRegs),
       .DataWidth     (DataWidth),
       .IrqLevelWidth (IrqLevelWidth)
