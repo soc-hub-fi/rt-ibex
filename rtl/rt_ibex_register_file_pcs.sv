@@ -96,7 +96,7 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
       .restore_en_o  (restore_en),
       .next_mret_i   (next_mret_i)
     );
-  end else if ( PCSType == ShiftRegLatchPCS ) begin : gen_shift_reg_impl
+  end else if ( PCSType == ShiftRegLatchPCS ) begin : gen_shift_reg_latch_impl
     rt_ibex_pcs_lifo_latch #(
       .NrSavedRegs   (NrSavedRegs),
       .DataWidth     (DataWidth),
