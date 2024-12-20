@@ -13,7 +13,7 @@
 module rt_ibex_register_file_pcs import ibex_pkg::*; #(
   parameter bit          RV32E         = 0,
   parameter int unsigned DataWidth     = 32,
-  parameter pcs_e        PCSType       = MemoryPCS,
+  parameter pcs_e        PCSType       = ShiftRegLatchPCS,
   parameter int unsigned IrqLevelWidth = 8
 ) (
   // Clock and Reset
@@ -82,6 +82,22 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
     );
   end else if ( PCSType == ShiftRegPCS ) begin : gen_shift_reg_impl
     rt_ibex_pcs_lifo #(
+      .NrSavedRegs   (NrSavedRegs),
+      .DataWidth     (DataWidth),
+      .IrqLevelWidth (IrqLevelWidth)
+    ) i_pcs_shiftreg (
+      .clk_i         (clk_i),
+      .rst_ni        (rst_ni),
+      .irq_level_i   (irq_level_i),
+      .irq_ack_i     (irq_ack_i),
+      .irq_exit_i    (irq_exit_i),
+      .store_data_i  (store_data),
+      .restore_data_o(restore_data),
+      .restore_en_o  (restore_en),
+      .next_mret_i   (next_mret_i)
+    );
+  end else if ( PCSType == ShiftRegLatchPCS ) begin : gen_shift_reg_impl
+    rt_ibex_pcs_lifo_latch #(
       .NrSavedRegs   (NrSavedRegs),
       .DataWidth     (DataWidth),
       .IrqLevelWidth (IrqLevelWidth)
