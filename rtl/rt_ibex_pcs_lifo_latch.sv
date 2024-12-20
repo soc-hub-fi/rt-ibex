@@ -134,4 +134,4 @@ end
 
 assign restore_data = shift_reg_q[0];
 
-endmodule : rt_ibex_pcs_lifo
+endmodule : rt_ibex_pcs_lifo_latch
