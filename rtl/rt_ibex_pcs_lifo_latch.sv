@@ -89,9 +89,10 @@ for (genvar ii=0; ii < MemDepth; ii++) begin : g_shift_reg
   always_latch begin
     if (~rst_ni) begin   // Might not be needed!
       shift_reg_q[ii] <= '0;
-    end else begin
-      shift_reg_q[ii] <= shift_reg_d[ii];  // Might not be needed as well :)
     end
+    // end else begin
+    //   shift_reg_q[ii] <= shift_reg_d[ii];  // Might not be needed as well :)
+    // end
   end
 
   always_comb begin : d_select
