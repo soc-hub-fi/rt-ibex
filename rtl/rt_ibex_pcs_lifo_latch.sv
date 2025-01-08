@@ -57,7 +57,7 @@ always_comb begin : ctrl_fsm
   we           = '0;
   restore_en_o = '0;
 
-  case (curr_state)
+  unique case (curr_state)
     IDLE: begin
       if (irq_ack_i) begin
         next_state = STORE;
@@ -68,7 +68,8 @@ always_comb begin : ctrl_fsm
     end
     STORE: begin
       we   = 1;
-      req  = 1;
+      req  = 0;
+      next_state   = IDLE;
     end
     RESTORE: begin
       req  = 1;
@@ -77,38 +78,48 @@ always_comb begin : ctrl_fsm
     RETURN_RESTORE: begin
       req = 1;
       restore_en_o = 1;
+      next_state   = IDLE;
     end
     default:begin
+      next_state   = IDLE;
+      req          = '0;
+      we           = '0;
+      restore_en_o = '0;
     end
   endcase
 
 end
 
+assign latch_en = req || we;
+
 for (genvar ii=0; ii < MemDepth; ii++) begin : g_shift_reg
 
   always_latch begin
-    if (~rst_ni) begin   // Might not be needed!
-      shift_reg_q[ii] <= '0;
+    if(latch_en) begin   // Store
+      shift_reg_q[ii] <= shift_reg_d[ii];
     end
-    // end else begin
-    //   shift_reg_q[ii] <= shift_reg_d[ii];  // Might not be needed as well :)
+    // if (req) begin  // Restore
+    //     if (ii == MemDepth-1) begin
+    //       shift_reg_d[ii] <= '0;
+    //     end else begin
+    //       shift_reg_d[ii] <= shift_reg_q[ii+1];
+    //     end
     // end
   end
 
   always_comb begin : d_select
-
     if(we) begin   // Store
-        if (ii == 0) begin
-          shift_reg_d[ii] = store_data;
-        end else begin
-          shift_reg_d[ii] = shift_reg_q[ii-1];
-        end
-    end else if (req) begin  // Restore
-        if (ii == MemDepth-1) begin
-          shift_reg_d[ii] = '0;
-        end else begin
-          shift_reg_d[ii] = shift_reg_q[ii+1];
-        end
+      if (ii == 0) begin
+        shift_reg_d[ii] = store_data;
+      end else begin
+        shift_reg_d[ii] = shift_reg_q[ii-1];
+      end
+    end else begin  // Restore
+      if (ii == MemDepth-1) begin
+        shift_reg_d[ii] = '0;
+      end else begin
+        shift_reg_d[ii] = shift_reg_q[ii+1];
+      end
     end
   end
 end
