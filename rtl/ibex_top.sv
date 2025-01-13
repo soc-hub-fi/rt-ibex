@@ -348,7 +348,8 @@ module ibex_top import ibex_pkg::*; #(
     .DmExceptionAddr  (DmExceptionAddr),
     .MCLICBASE_ADDR   (MClicBaseAddr),
     .HardwareStacking (HardwareStacking),
-    .RegisterWindowing(RegisterWindowing)
+    .RegisterWindowing(RegisterWindowing),
+    .PCS              (PCS)
   ) u_ibex_core (
     .clk_i(clk),
     .rst_ni,
