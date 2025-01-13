@@ -653,7 +653,7 @@ end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
       .mepc_o      (rf_mepc),
       .mcause_o    (rf_mcause),
       .pcs_restore_done_o(pcs_restore_done),
-      .next_mret_i (next_mret),
+      .next_mret_i (mret_core),
       .raddr_a_i   (rf_raddr_a),
       .rdata_a_o   (rf_rdata_a_ecc),
       .raddr_b_i   (rf_raddr_b),
