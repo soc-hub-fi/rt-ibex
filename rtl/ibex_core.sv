@@ -456,7 +456,7 @@ module ibex_core import ibex_pkg::*; #(
   logic             stacking_csr_fast_lsu;
   logic             stacking_csr_select;
 
-  logic             csr_fast_wrf;
+  logic             csr_fast_rf;
 
 
   assign csr_mcause_o = csr_mcause;
@@ -1360,9 +1360,9 @@ module ibex_core import ibex_pkg::*; #(
     .lsu_rdata_i(rf_wdata_lsu),
     .lsu_rdata_valid_i(rf_we_lsu),
 
-    .rfw_mepc_i(rf_mepc_i),
-    .rfw_mcause_i(rf_mcause_i),
-    .csr_fast_wrf_i(csr_fast_wrf)
+    .rf_mepc_i(rf_mepc_i),
+    .rf_mcause_i(rf_mcause_i),
+    .csr_fast_rf_i(csr_fast_wrf)
   );
 
   // These assertions are in top-level as instr_valid_id required as the enable term
