@@ -997,7 +997,7 @@ module ibex_controller #(
           // special instructions and pipeline flushes
           if (mret_insn) begin
             rf_decrement_ptr_o     = 1'b1;  // decrement register_window pointer (does not have an effect when register_windowing is disabled)
-            csr_fast_rf_o         = 1'b1;  // restore context CSRs from auxiliary registers (does not have an effect when register_windowing is disabled)
+            // csr_fast_rf_o         = 1'b1;  // restore context CSRs from auxiliary registers (does not have an effect when register_windowing is disabled)
 
             // MRET detected
             if(HardwareStacking) begin
@@ -1056,13 +1056,13 @@ module ibex_controller #(
 
 
       PCS_MRET: begin
-        controller_run_o  = 1'b0;
+        controller_run_o      = 1'b0;
         ctrl_fsm_ns           = PCS_MRET;
 
         if(pcs_restore_done_i) begin     // The state is restored from the pcs memory to pcs RegFile
           ctrl_fsm_ns         = DECODE;
 
-          pcs_csr_restore_mret_id_o = 1'b1;    // Restore MEPC and MCAUSE
+          csr_fast_rf_o         = 1'b1;    // Restore MEPC and MCAUSE
           pc_mux_o              = PC_ERET;     // Return from interrupt handler
           pc_set_o              = 1'b1;
         end
