@@ -1364,7 +1364,7 @@ module ibex_core import ibex_pkg::*; #(
 
     .rf_mepc_i(rf_mepc_i),
     .rf_mcause_i(rf_mcause_i),
-    .csr_fast_rf_i(csr_fast_wrf)
+    .csr_fast_rf_i(csr_fast_rf)
   );
 
   // These assertions are in top-level as instr_valid_id required as the enable term

@@ -244,7 +244,7 @@ module ibex_id_stage #(
   output logic                 rf_decrement_ptr_o,
   input  logic                 rf_window_full_i,
   output logic                 rfw_save_csr_o,
-  output logic                 csr_fast_wrf_o
+  output logic                 csr_fast_rf_o
 );
 
   import ibex_pkg::*;
