@@ -233,8 +233,8 @@ module ibex_top import ibex_pkg::*; #(
   logic                        rf_decrement_ptr;
   logic                        rf_window_full;
 
-  logic [31:0]                 rfw_mepc;
-  logic [31:0]                 rfw_mcause;
+  logic [31:0]                 rf_mepc;
+  logic [31:0]                 rf_mcause;
   logic                        rfw_save_csr;
   /////////////////////
   // Main clock gate //
