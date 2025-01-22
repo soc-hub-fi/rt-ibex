@@ -674,6 +674,8 @@ module ibex_core import ibex_pkg::*; #(
       .id_mux_ctrl_o(stacking_id_mux_ctrl),
       .lsu_data_select_o(lsu_data_select),
       .mcause_pending_o(stacking_mcause_pending)
+      .csr_fast_lsu_o(stacking_csr_fast_lsu),
+      .csr_select_o(stacking_csr_select)
     );
   end
   else begin : gen_no_hardware_stacking
