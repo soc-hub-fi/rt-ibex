@@ -897,7 +897,7 @@ module ibex_core import ibex_pkg::*; #(
     .rf_decrement_ptr_o(rf_decrement_ptr_o),
     .rf_window_full_i(rf_window_full_i),
     .rfw_save_csr_o(rfw_save_csr_o),
-    .csr_fast_wrf_o(csr_fast_wrf)
+    .csr_fast_rf_o(csr_fast_rf)
 
   );
 
