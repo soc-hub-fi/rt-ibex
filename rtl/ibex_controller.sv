@@ -1058,11 +1058,11 @@ module ibex_controller #(
       PCS_MRET: begin
         controller_run_o      = 1'b0;
         ctrl_fsm_ns           = PCS_MRET;
+        csr_fast_rf_o         = 1'b1;    // Restore MEPC/MCAUSE  
 
         if(pcs_restore_done_i) begin     // The state is restored from the pcs memory to pcs RegFile
           ctrl_fsm_ns         = DECODE;
-
-          csr_fast_rf_o         = 1'b1;    // Restore MEPC and MCAUSE
+          csr_fast_rf_o         = 1'b0;
           pc_mux_o              = PC_ERET;     // Return from interrupt handler
           pc_set_o              = 1'b1;
         end
