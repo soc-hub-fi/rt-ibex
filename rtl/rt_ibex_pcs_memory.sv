@@ -97,7 +97,6 @@ module rt_ibex_pcs_memory #(
     .NUM_WORDS  (MemDepth)
   ) i_sram (
     .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
     .req_i   (req),
     .we_i    (we),
     .addr_i  (addr_r),
