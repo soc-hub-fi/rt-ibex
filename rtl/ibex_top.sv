@@ -33,6 +33,7 @@ module ibex_top import ibex_pkg::*; #(
   parameter bit          ICacheScramble   = 1'b0,
   parameter bit          CLIC             = 1'b1,
   parameter bit          HardwareStacking = 1'b0,
+  parameter pcs_e        PCSType          = MemoryPCS,
   parameter int unsigned NumInterrupts    = 64,
   parameter int unsigned NumPrioBits      = 4,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
@@ -642,7 +643,8 @@ end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
     rt_ibex_register_file_pcs #(
       .RV32E            (RV32E),
       .DataWidth        (RegFileDataWidth),
-      .IrqLevelWidth    (NumPriorities)
+      .IrqLevelWidth    (NumPriorities),
+      .PCSType          (PCSType)
     ) register_file_i (
       .clk_i       (clk),
       .rst_ni      (rst_ni),
