@@ -33,7 +33,7 @@ module ibex_top import ibex_pkg::*; #(
   parameter bit          ICacheScramble   = 1'b0,
   parameter bit          CLIC             = 1'b1,
   parameter bit          HardwareStacking = 1'b0,
-  parameter pcs_e        PCSType          = MemoryPCS,
+  parameter pcs_e        PCSType          = ShiftRegPCS,
   parameter int unsigned NumInterrupts    = 64,
   parameter int unsigned NumPrioBits      = 4,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
