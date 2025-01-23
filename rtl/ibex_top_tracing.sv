@@ -72,12 +72,8 @@ module ibex_top_tracing import ibex_pkg::*; #(
   input  logic                         data_err_i,
 
   // Interrupt inputs
-  //input  logic                         irq_software_i,
-  //input  logic                         irq_timer_i,
-  //input  logic                         irq_external_i,
-  //input  logic [14:0]                  irq_fast_i,
-  //input  logic                         irq_nm_i,       // non-maskeable interrupt
-  input  logic [NumInterrupts-1:0]    irq_i,
+  input  logic                         irq_is_pcs_i,
+  input  logic [NumInterrupts-1:0]     irq_i,
   output logic [$clog2(NumInterrupts)-1:0] irq_id_o,
   output logic                         irq_ack_o,
   input  logic [7:0]                   irq_level_i,
@@ -233,11 +229,7 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .data_rdata_intg_i,
     .data_err_i,
 
-    //.irq_software_i,
-    //.irq_timer_i,
-    //.irq_external_i,
-    //.irq_fast_i,
-    //.irq_nm_i,
+    .irq_is_pcs_i,
     .irq_i,
     .irq_id_o,
     .irq_ack_o,

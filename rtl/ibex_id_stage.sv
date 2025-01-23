@@ -29,8 +29,7 @@ module ibex_id_stage #(
   parameter int unsigned      NUM_INTERRUPTS  = 64,
   parameter bit               CLIC            = 1,
   parameter bit               HardwareStacking= 1'b0,
-  parameter bit               RegisterWindowing= 1'b0,
-  parameter bit               PCS              = 1'b0
+  parameter bit               RegisterWindowing= 1'b0
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
@@ -237,6 +236,7 @@ module ibex_id_stage #(
   output logic                      pcs_csr_restore_mret_id_o,
   input  logic                      pcs_restore_done_i,
   output logic                      start_pcs_o,
+  input  logic                      pcs_acive_i,
 
 
   // To windowed register file
@@ -727,8 +727,7 @@ module ibex_id_stage #(
     .BranchPredictor(BranchPredictor),
     .MemECC(MemECC),
     .HardwareStacking(HardwareStacking),
-    .RegisterWindowing(RegisterWindowing),
-    .PCS(PCS)
+    .RegisterWindowing(RegisterWindowing)
   ) controller_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -854,7 +853,8 @@ module ibex_id_stage #(
     .pcs_mret_o(pcs_mret_o),
     .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
     .pcs_restore_done_i(pcs_restore_done_i),
-    .start_pcs_o(start_pcs_o)
+    .start_pcs_o(start_pcs_o),
+    .pcs_acive_i
   );
 
 

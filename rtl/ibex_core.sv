@@ -44,7 +44,6 @@ module ibex_core import ibex_pkg::*; #(
   parameter bit          CLIC              = 1'b1,
   parameter bit          HardwareStacking  = 1'b0,
   parameter bit          RegisterWindowing = 1'b0,
-  parameter bit          PCS               = 1'b0,
   parameter int unsigned NumRegisterWindows = 4,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32,
   parameter int unsigned DmHaltAddr        = 32'h1A110800,
@@ -183,6 +182,7 @@ module ibex_core import ibex_pkg::*; #(
   input  logic                         pcs_restore_done_i,
   output logic                         next_instr_mret_o,
   output logic                         start_pcs_o,
+  input  logic                         pcs_acive_i,
 
   // To windowed register file
   output logic                 rf_increment_ptr_o,
@@ -700,8 +700,7 @@ module ibex_core import ibex_pkg::*; #(
     .MemECC         (MemECC),
     .CLIC           (CLIC),
     .RegisterWindowing(RegisterWindowing),
-    .HardwareStacking(HardwareStacking),
-    .PCS(PCS)
+    .HardwareStacking(HardwareStacking)
   ) id_stage_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -890,6 +889,8 @@ module ibex_core import ibex_pkg::*; #(
     .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
     .pcs_restore_done_i         (pcs_restore_done_i),
     .start_pcs_o(start_pcs_o),
+    .pcs_acive_i,
+
 
 
     // To windowed register file
