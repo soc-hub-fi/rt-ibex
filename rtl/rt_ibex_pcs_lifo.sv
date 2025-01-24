@@ -23,14 +23,12 @@ localparam int unsigned MemDepth = (IrqLevelWidth);
 typedef enum logic [2:0] {
   IDLE,
   STORE,
-  RESTORE,
-  RETURN_RESTORE
+  RESTORE
 } state_t;
 
 state_t curr_state, next_state;
 
 logic [MemWidth-1:0] store_data, restore_data;
-logic req, we;
 
 logic [MemWidth-1:0] shift_reg_d [MemDepth];
 logic [MemWidth-1:0] shift_reg_q [MemDepth];
@@ -53,8 +51,6 @@ end
 always_comb begin : ctrl_fsm
 
   next_state   = IDLE;
-  req          = '0;
-  we           = '0;
   restore_en_o = '0;
 
   case (curr_state)
@@ -62,21 +58,12 @@ always_comb begin : ctrl_fsm
       if (irq_ack_i) begin
         next_state = STORE;
       end else if (next_mret_i) begin
-        req = 1;
         next_state = RESTORE;
       end
     end
-    STORE: begin
-      we   = 1;
-      req  = 1;
-    end
     RESTORE: begin
-      req  = 1;
-      next_state = RETURN_RESTORE;
-    end
-    RETURN_RESTORE: begin
-      req = 1;
       restore_en_o = 1;
+      next_state = IDLE;
     end
     default:begin
     end

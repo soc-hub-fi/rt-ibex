@@ -18,7 +18,6 @@ module ibex_controller #(
   parameter bit HardwareStacking= 1'b0,
   parameter int unsigned NUM_INTERRUPTS = 64,
   parameter bit RegisterWindowing= 1'b0,
-  parameter bit PCS              = 1'b0,
 
   parameter int unsigned EXCCODE_PAD = 12 - $clog2(NUM_INTERRUPTS)
  ) (
@@ -157,7 +156,8 @@ module ibex_controller #(
   output logic                  pcs_mret_o,
   output logic                  pcs_csr_restore_mret_id_o,
   input  logic                  pcs_restore_done_i,
-  output logic                  start_pcs_o
+  output logic                  start_pcs_o,
+  input  logic                  pcs_acive_i
 
 );
   import ibex_pkg::*;
@@ -1009,7 +1009,7 @@ module ibex_controller #(
               stacking_mode_o  = RESTORE;
 
               ctrl_fsm_ns      = HWS_MRET;
-            end else if(PCS) begin
+            end else if(pcs_acive_i) begin
               // If PCS is enabled, MRET execution is delayed
               // RESTORE state of PCS is triggered
               // PCS does not required in-flight instructions. MRET is flushed and ID-stage is halted
