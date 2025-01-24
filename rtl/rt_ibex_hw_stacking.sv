@@ -337,7 +337,6 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : update_dest_src
         done_o                <= 1'b0;
         instr_valid_o         <= 1'b0;
         instr_rdata_o         <= instr_rdata;
-        id_mux_ctrl_o         <= 1'b0;
         instr_is_compressed_o <= 1'b0;
 
         lsu_data_select_o     <= 2'b00;
@@ -362,7 +361,7 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : update_dest_src
           instr_rdata_o       <= instr_rdata;
         end else begin
           if(if_id_pipe_reg_we_i) begin
-            instr_rdata_o     <= instr_out_bypass_i;
+            instr_rdata_o     <= if_inst_bypass_i;
           end
         end
     end
