@@ -497,13 +497,6 @@ module ibex_id_stage #(
   end
 
 
-  /////////////////////////////////
-  /// HW STACKING MULTIXPLEXING ///
-  ////////////////////////////////
-
-  assign instr_rdata = (id_mux_ctrl_i == 1'b1) ? stacking_instr_rdata_i : instr_rdata_i;
-  assign instr_rdata_alu = (id_mux_ctrl_i == 1'b1) ? stacking_instr_rdata_i : instr_rdata_alu_i;
-
   /////////////
   // Decoder //
   /////////////
