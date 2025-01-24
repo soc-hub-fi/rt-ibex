@@ -458,6 +458,8 @@ module ibex_core import ibex_pkg::*; #(
 
   logic             csr_fast_rf;
 
+  logic [31:0]      if_instr_rdata_id;
+
 
   assign csr_mcause_o = csr_mcause;
   assign csr_mepc_o   = csr_mepc;
@@ -568,7 +570,7 @@ module ibex_core import ibex_pkg::*; #(
     // outputs to ID stage
     .instr_valid_id_o        (instr_valid_id),
     .instr_new_id_o          (instr_new_id),
-    .instr_rdata_id_o        (instr_rdata_id),
+    .instr_rdata_id_o        (if_instr_rdata_id),
     .instr_rdata_alu_id_o    (instr_rdata_alu_id),
     .instr_rdata_c_id_o      (instr_rdata_c_id),
     .instr_is_compressed_id_o(instr_is_compressed_id),
@@ -671,17 +673,19 @@ module ibex_core import ibex_pkg::*; #(
       .instr_rdata_c_o(stacking_instr_rdata_c),
       .instr_is_compressed_o(stacking_instr_is_compressed),
       .done_o(stacking_done),
-      .id_mux_ctrl_o(stacking_id_mux_ctrl),
       .lsu_data_select_o(lsu_data_select),
       .mcause_pending_o(stacking_mcause_pending),
       .csr_fast_lsu_o(stacking_csr_fast_lsu),
       .csr_select_o(stacking_csr_select)
     );
+
+    assign instr_rdata_id = stacking_instr_rdata;
   end
   else begin : gen_no_hardware_stacking
     // constant propagation to clean the hw_stack logic in Controller, ID-stage, LSU
     assign stacking_id_mux_ctrl = 1'b0;
     assign lsu_data_select      = 2'b00;
+    assign instr_rdata_id       = if_instr_rdata_id;
   end
 
   //////////////
