@@ -459,6 +459,9 @@ module ibex_core import ibex_pkg::*; #(
   logic             csr_fast_rf;
 
   logic [31:0]      if_instr_rdata_id;
+  
+  logic             if_id_pipe_reg_we;
+  logic [31:0]      instr_out_bypass;
 
 
   assign csr_mcause_o = csr_mcause;
@@ -620,6 +623,9 @@ module ibex_core import ibex_pkg::*; #(
     // pipeline stalls
     .id_in_ready_i(id_in_ready_masked),
 
+    .if_id_pipe_reg_we_o(if_id_pipe_reg_we),
+    .instr_out_bypass_o(instr_out_bypass),
+
     .pc_mismatch_alert_o(pc_mismatch_alert),
     .if_busy_o          (if_busy)
   );
@@ -660,6 +666,9 @@ module ibex_core import ibex_pkg::*; #(
     ) hw_stacking_i (
       .clk_i (clk_i),
       .rst_ni(rst_ni),
+      
+      .if_id_pipe_reg_we_i(if_id_pipe_reg_we),
+      .if_inst_bypass_i(if_inst_bypass),
 
       .start_i(stacking_start),
       .ack_i(stacking_ack),
