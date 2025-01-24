@@ -11,6 +11,10 @@ module rt_ibex_hw_stacking import ibex_pkg::*; #(
     input logic            rst_ni,
     input logic            clk_i,
 
+    // from IF stage 
+    input logic                        if_id_pipe_reg_we_i;      
+    input logic [31:0]                 if_inst_bypass_i;     
+
 
     input logic            start_i,
     input logic            ack_i,
@@ -19,13 +23,11 @@ module rt_ibex_hw_stacking import ibex_pkg::*; #(
     input logic            instr_valid_clear_i,
     input logic            id_in_ready_i,
 
-
     output logic           instr_valid_o,
     output logic [31:0]    instr_rdata_o,
     output logic [15:0]    instr_rdata_c_o,
     output logic           instr_is_compressed_o,
     output logic           done_o,
-    output logic           id_mux_ctrl_o,
     output logic [1:0]     lsu_data_select_o,
     output logic           mcause_pending_o,
     output logic           csr_fast_lsu_o,
@@ -348,7 +350,6 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : update_dest_src
         done_o                <= done;
         instr_valid_o         <= instr_valid;
         instr_rdata_o         <= instr_rdata;
-        id_mux_ctrl_o         <= id_mux_ctrl;
         instr_is_compressed_o <= instr_is_compressed;
 
         lsu_data_select_o     <= lsu_data_select;
@@ -356,6 +357,14 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : update_dest_src
 
         csr_fast_lsu_o        <= csr_fast_lsu;
         csr_select_o          <= csr_select;
+
+        if(id_mux_ctrl) begin
+          instr_rdata_o       <= instr_rdata;
+        end else begin 
+          if(if_id_pipe_reg_we_i) begin 
+            instr_rdata_o     <= instr_out_bypass_i; 
+          end 
+        end 
     end
 end
 
