@@ -11,9 +11,9 @@ module rt_ibex_hw_stacking import ibex_pkg::*; #(
     input logic            rst_ni,
     input logic            clk_i,
 
-    // from IF stage 
-    input logic                        if_id_pipe_reg_we_i;      
-    input logic [31:0]                 if_inst_bypass_i;     
+    // from IF stage
+    input logic                        if_id_pipe_reg_we_i,
+    input logic [31:0]                 if_inst_bypass_i,
 
 
     input logic            start_i,
@@ -360,11 +360,11 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : update_dest_src
 
         if(id_mux_ctrl) begin
           instr_rdata_o       <= instr_rdata;
-        end else begin 
-          if(if_id_pipe_reg_we_i) begin 
-            instr_rdata_o     <= instr_out_bypass_i; 
-          end 
-        end 
+        end else begin
+          if(if_id_pipe_reg_we_i) begin
+            instr_rdata_o     <= instr_out_bypass_i;
+          end
+        end
     end
 end
 
