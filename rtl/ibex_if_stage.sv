@@ -128,6 +128,9 @@ module ibex_if_stage import ibex_pkg::*; #(
 
   // pipeline stall
   input  logic                        id_in_ready_i,            // ID stage is ready for new instr
+  
+  output logic                        if_id_pipe_reg_we_o;      // to HWS: signals that a valid instruction is ready to be written to if/id pipeline registers
+  output logic [31:0]                 instr_out_bypass_o;       // to HWS: bypasses IF-ID instr_out register 
 
   // misc signals
   output logic                        pc_mismatch_alert_o,
@@ -528,6 +531,12 @@ module ibex_if_stage import ibex_pkg::*; #(
 
   // IF-ID pipeline registers, frozen when the ID stage is stalled
   assign if_id_pipe_reg_we = instr_new_id_d;
+
+  // IF-ID through Hardware stacking unit
+  assign if_id_pipe_reg_we_o = if_id_pipe_reg_we;
+
+  // IF-ID through Hardware stacking unit 
+  assign instr_out_bypass_o  = instr_out;
 
   if (ResetAll) begin : g_instr_rdata_ra
     always_ff @(posedge clk_i or negedge rst_ni) begin
