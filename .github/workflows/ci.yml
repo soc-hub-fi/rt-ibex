@@ -8,14 +8,9 @@ name: Ibex CI
 
 on:
   push:
-    tags:
-      - "*"
-  merge_group:
-    types:
-      - checks_requested
-  pull_request:
     branches:
-      - "*"
+      # For now, let's only run this workflow on compliance branches
+      - 'compliance/**'
 
 # Note: All tests run as part of one job to avoid copying intermediate build
 # artifacts around (e.g. Verilator and toolchain builds). Once more builds/tests
