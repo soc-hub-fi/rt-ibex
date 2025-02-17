@@ -258,6 +258,7 @@ always_comb begin
 
         if(id_in_ready_i) begin
           immediate          = 4'h7;
+          lsu_data_select    = 2'b01;
 
           hws_fsm_ns    = MEPC;
         end
@@ -275,6 +276,7 @@ always_comb begin
 
         if(id_in_ready_i) begin
           lsu_data_select    = 2'b10;
+          immediate          = 4'h8;
 
           hws_fsm_ns    = MCAUSE;
         end
