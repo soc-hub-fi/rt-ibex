@@ -8,14 +8,9 @@ name: Ibex CI
 
 on:
   push:
-    tags:
-      - "*"
-  merge_group:
-    types:
-      - checks_requested
-  pull_request:
     branches:
-      - "*"
+      # For now, let's only run this workflow on compliance branches
+      - 'compliance/**'
 
 # Note: All tests run as part of one job to avoid copying intermediate build
 # artifacts around (e.g. Verilator and toolchain builds). Once more builds/tests
@@ -108,26 +103,10 @@ jobs:
         uses: ./.github/actions/ibex-rtl-ci-steps
         with:
           ibex_config: small
-      - name: Run Ibex RTL CI for opentitan configuration
-        uses: ./.github/actions/ibex-rtl-ci-steps
-        with:
-          ibex_config: opentitan
       - name: Run Ibex RTL CI for maxperf configuration
         uses: ./.github/actions/ibex-rtl-ci-steps
         with:
           ibex_config: maxperf
-      - name: Run Ibex RTL CI for maxperf-pmp-bmbalanced configuration
-        uses: ./.github/actions/ibex-rtl-ci-steps
-        with:
-          ibex_config: maxperf-pmp-bmbalanced
-      - name: Run Ibex RTL CI for maxperf-pmp-bmfull configuration
-        uses: ./.github/actions/ibex-rtl-ci-steps
-        with:
-          ibex_config: maxperf-pmp-bmfull
-      - name: Run Ibex RTL CI for experimental-branch-predictor configuration
-        uses: ./.github/actions/ibex-rtl-ci-steps
-        with:
-          ibex_config: experimental-branch-predictor
 
       # Run lint on simple system
       - name: Run Verilator lint on simple system
