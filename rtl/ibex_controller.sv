@@ -18,7 +18,6 @@ module ibex_controller #(
   parameter bit HardwareStacking= 1'b0,
   parameter int unsigned NUM_INTERRUPTS = 64,
   parameter bit RegisterWindowing= 1'b0,
-  parameter bit PCS              = 1'b0,
 
   parameter int unsigned EXCCODE_PAD = 12 - $clog2(NUM_INTERRUPTS)
  ) (
@@ -151,13 +150,14 @@ module ibex_controller #(
   output logic                 rf_decrement_ptr_o,
   input  logic                 rf_window_full_i,
   output logic                 rfw_save_csr_o,
-  output logic                 csr_fast_wrf_o,
+  output logic                 csr_fast_rf_o,
 
   // pcs support
   output logic                  pcs_mret_o,
   output logic                  pcs_csr_restore_mret_id_o,
   input  logic                  pcs_restore_done_i,
-  output logic                  start_pcs_o
+  output logic                  start_pcs_o,
+  input  logic                  pcs_acive_i
 
 );
   import ibex_pkg::*;
@@ -566,7 +566,7 @@ module ibex_controller #(
     rf_increment_ptr_o     = 1'b0;
     rf_decrement_ptr_o     = 1'b0;
     rfw_save_csr_o         = 1'b0;
-    csr_fast_wrf_o         = 1'b0;
+    csr_fast_rf_o         = 1'b0;
 
     pcs_mret_o                = 1'b0;
     pcs_csr_restore_mret_id_o = 1'b0;
@@ -609,7 +609,8 @@ module ibex_controller #(
         // normal execution flow
         // in debug mode or single step mode we leave immediately (wfi=nop)
         // wake-up from sleep on NMI, internal interrupts for CLINT, all interrupts for CLIC, and debug requests
-        if (handle_irq || irq_nm || irq_pending_i || debug_req_i || debug_mode_q || debug_single_step_i) begin
+        if (handle_irq || irq_nm || irq_pending_i || irq_wu_ctrl_i
+          || debug_req_i || debug_mode_q || debug_single_step_i) begin
           ctrl_fsm_ns = FIRST_FETCH;
         end else begin
           // Make sure clock remains disabled.
@@ -997,7 +998,7 @@ module ibex_controller #(
           // special instructions and pipeline flushes
           if (mret_insn) begin
             rf_decrement_ptr_o     = 1'b1;  // decrement register_window pointer (does not have an effect when register_windowing is disabled)
-            csr_fast_wrf_o         = 1'b1;  // restore context CSRs from auxiliary registers (does not have an effect when register_windowing is disabled)
+            // csr_fast_rf_o         = 1'b1;  // restore context CSRs from auxiliary registers (does not have an effect when register_windowing is disabled)
 
             // MRET detected
             if(HardwareStacking) begin
@@ -1009,7 +1010,7 @@ module ibex_controller #(
               stacking_mode_o  = RESTORE;
 
               ctrl_fsm_ns      = HWS_MRET;
-            end else if(PCS) begin
+            end else if(pcs_acive_i) begin
               // If PCS is enabled, MRET execution is delayed
               // RESTORE state of PCS is triggered
               // PCS does not required in-flight instructions. MRET is flushed and ID-stage is halted
@@ -1056,13 +1057,14 @@ module ibex_controller #(
 
 
       PCS_MRET: begin
-        controller_run_o  = 1'b0;
+        controller_run_o      = 1'b0;
         ctrl_fsm_ns           = PCS_MRET;
+        csr_fast_rf_o         = 1'b1;    // Restore MEPC/MCAUSE
 
         if(pcs_restore_done_i) begin     // The state is restored from the pcs memory to pcs RegFile
           ctrl_fsm_ns         = DECODE;
-
-          pcs_csr_restore_mret_id_o = 1'b1;    // Restore MEPC and MCAUSE
+          csr_fast_rf_o         = 1'b0;
+          csr_restore_mret_id_o = 1'b1;    // Restore MEPC and MCAUSE
           pc_mux_o              = PC_ERET;     // Return from interrupt handler
           pc_set_o              = 1'b1;
         end

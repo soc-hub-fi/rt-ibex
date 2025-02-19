@@ -20,7 +20,7 @@ sources:
   - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv
   - vendor/lowrisc_ip/ip/prim/rtl/prim_cipher_pkg.sv
   - rtl/ibex_pkg.sv
-  - rtl/rt_ibex_hw_stacking.sv 
+  - rtl/rt_ibex_hw_stacking.sv
   - rtl/ibex_controller.sv
   - rtl/ibex_compressed_decoder.sv
   - rtl/ibex_decoder.sv
@@ -30,6 +30,7 @@ sources:
   - rtl/ibex_register_file_latch.sv
   - rtl/rt_ibex_register_window_latch.sv
   - rtl/rt_ibex_pcs_lifo.sv
+  - rtl/rt_ibex_pcs_lifo_latch.sv
   - rtl/rt_ibex_pcs_memory.sv
   - rtl/rt_ibex_register_file_pcs.sv
   - rtl/ibex_fetch_fifo.sv

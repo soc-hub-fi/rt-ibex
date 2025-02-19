@@ -92,12 +92,14 @@ module rt_ibex_pcs_memory #(
 
   end
 
-  sram #(
-    .DATA_WIDTH (MemWidth),
-    .NUM_WORDS  (MemDepth)
+  tc_sram #(
+    .DataWidth (MemWidth),
+    .NumWords  (MemDepth),
+    .SimInit   ("random"),
+    .NumPorts  (1),
+    .Latency   (1)
   ) i_sram (
     .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
     .req_i   (req),
     .we_i    (we),
     .addr_i  (addr_r),

@@ -153,9 +153,9 @@ module ibex_cs_registers #(
   input  logic                 lsu_rdata_valid_i ,
 
 
-  input  logic [31:0]          rfw_mepc_i,
-  input  logic [31:0]          rfw_mcause_i,
-  input  logic                 csr_fast_wrf_i
+  input  logic [31:0]          rf_mepc_i,
+  input  logic [31:0]          rf_mcause_i,
+  input  logic                 csr_fast_rf_i
 
 );
 
@@ -927,6 +927,7 @@ module ibex_cs_registers #(
 
     // exception controller gets priority over other writes
     unique case (1'b1)
+      // fast LSU mepc/mcause restore for Hardware Stacking
       csr_fast_lsu_i: begin
         if(lsu_rdata_valid_i) begin
           if(stacking_csr_select_i) begin   // save mepc
@@ -937,6 +938,15 @@ module ibex_cs_registers #(
             mcause_d       = lsu_rdata_i;
           end
         end
+      end
+
+      // fast RF mepc/mcause restore for Register windowing and PCS
+      csr_fast_rf_i: begin
+        mepc_en        = 1'b1;
+        mepc_d         = rf_mepc_i;
+
+        mcause_en      = 1'b1;
+        mcause_d       = rf_mcause_i;
       end
 
       csr_save_cause_i: begin

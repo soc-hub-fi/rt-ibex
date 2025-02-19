@@ -56,8 +56,9 @@ package ibex_pkg;
   } rv32b_e;
 
   typedef enum integer {
-    MemoryPCS   = 0,
-    ShiftRegPCS = 1
+    MemoryPCS        = 0,
+    ShiftRegPCS      = 1,
+    ShiftRegLatchPCS = 2
   } pcs_e;
 
 

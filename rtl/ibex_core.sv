@@ -44,7 +44,6 @@ module ibex_core import ibex_pkg::*; #(
   parameter bit          CLIC              = 1'b1,
   parameter bit          HardwareStacking  = 1'b0,
   parameter bit          RegisterWindowing = 1'b0,
-  parameter bit          PCS               = 1'b0,
   parameter int unsigned NumRegisterWindows = 4,
   parameter int unsigned MemDataWidth      = MemECC ? 32 + 7 : 32,
   parameter int unsigned DmHaltAddr        = 32'h1A110800,
@@ -183,6 +182,7 @@ module ibex_core import ibex_pkg::*; #(
   input  logic                         pcs_restore_done_i,
   output logic                         next_instr_mret_o,
   output logic                         start_pcs_o,
+  input  logic                         pcs_acive_i,
 
   // To windowed register file
   output logic                 rf_increment_ptr_o,
@@ -456,7 +456,7 @@ module ibex_core import ibex_pkg::*; #(
   logic             stacking_csr_fast_lsu;
   logic             stacking_csr_select;
 
-  logic             csr_fast_wrf;
+  logic             csr_fast_rf;
 
 
   assign csr_mcause_o = csr_mcause;
@@ -673,7 +673,9 @@ module ibex_core import ibex_pkg::*; #(
       .done_o(stacking_done),
       .id_mux_ctrl_o(stacking_id_mux_ctrl),
       .lsu_data_select_o(lsu_data_select),
-      .mcause_pending_o(stacking_mcause_pending)
+      .mcause_pending_o(stacking_mcause_pending),
+      .csr_fast_lsu_o(stacking_csr_fast_lsu),
+      .csr_select_o(stacking_csr_select)
     );
   end
   else begin : gen_no_hardware_stacking
@@ -698,8 +700,7 @@ module ibex_core import ibex_pkg::*; #(
     .MemECC         (MemECC),
     .CLIC           (CLIC),
     .RegisterWindowing(RegisterWindowing),
-    .HardwareStacking(HardwareStacking),
-    .PCS(PCS)
+    .HardwareStacking(HardwareStacking)
   ) id_stage_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -885,9 +886,11 @@ module ibex_core import ibex_pkg::*; #(
 
     // pcs support
     .pcs_mret_o(pcs_mret_o),
-    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
+    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),// FIXME: NOT CONNECTED
     .pcs_restore_done_i         (pcs_restore_done_i),
     .start_pcs_o(start_pcs_o),
+    .pcs_acive_i,
+
 
 
     // To windowed register file
@@ -895,7 +898,7 @@ module ibex_core import ibex_pkg::*; #(
     .rf_decrement_ptr_o(rf_decrement_ptr_o),
     .rf_window_full_i(rf_window_full_i),
     .rfw_save_csr_o(rfw_save_csr_o),
-    .csr_fast_wrf_o(csr_fast_wrf)
+    .csr_fast_rf_o(csr_fast_rf)
 
   );
 
@@ -1360,9 +1363,9 @@ module ibex_core import ibex_pkg::*; #(
     .lsu_rdata_i(rf_wdata_lsu),
     .lsu_rdata_valid_i(rf_we_lsu),
 
-    .rfw_mepc_i(rf_mepc_i),
-    .rfw_mcause_i(rf_mcause_i),
-    .csr_fast_wrf_i(csr_fast_wrf)
+    .rf_mepc_i(rf_mepc_i),
+    .rf_mcause_i(rf_mcause_i),
+    .csr_fast_rf_i(csr_fast_rf)
   );
 
   // These assertions are in top-level as instr_valid_id required as the enable term

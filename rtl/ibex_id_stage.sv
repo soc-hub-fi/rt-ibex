@@ -29,8 +29,7 @@ module ibex_id_stage #(
   parameter int unsigned      NUM_INTERRUPTS  = 64,
   parameter bit               CLIC            = 1,
   parameter bit               HardwareStacking= 1'b0,
-  parameter bit               RegisterWindowing= 1'b0,
-  parameter bit               PCS              = 1'b0
+  parameter bit               RegisterWindowing= 1'b0
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
@@ -237,6 +236,7 @@ module ibex_id_stage #(
   output logic                      pcs_csr_restore_mret_id_o,
   input  logic                      pcs_restore_done_i,
   output logic                      start_pcs_o,
+  input  logic                      pcs_acive_i,
 
 
   // To windowed register file
@@ -244,7 +244,7 @@ module ibex_id_stage #(
   output logic                 rf_decrement_ptr_o,
   input  logic                 rf_window_full_i,
   output logic                 rfw_save_csr_o,
-  output logic                 csr_fast_wrf_o
+  output logic                 csr_fast_rf_o
 );
 
   import ibex_pkg::*;
@@ -693,7 +693,7 @@ module ibex_id_stage #(
       assign mip_o = '0;
 
       // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
-      assign irq_wu_ctrl = |({clic_irqs_q, ibex_irqs_q});
+      assign irq_wu_ctrl = |({clic_irqs_i, ibex_irqs_i});
 
     //end
   //endgenerate
@@ -727,8 +727,7 @@ module ibex_id_stage #(
     .BranchPredictor(BranchPredictor),
     .MemECC(MemECC),
     .HardwareStacking(HardwareStacking),
-    .RegisterWindowing(RegisterWindowing),
-    .PCS(PCS)
+    .RegisterWindowing(RegisterWindowing)
   ) controller_i (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
@@ -847,14 +846,15 @@ module ibex_id_stage #(
     .rf_decrement_ptr_o(rf_decrement_ptr_o),
     .rf_window_full_i(rf_window_full_i),
     .rfw_save_csr_o(rfw_save_csr_o),
-    .csr_fast_wrf_o(csr_fast_wrf_o),
+    .csr_fast_rf_o(csr_fast_rf_o),
 
 
     // pcs support
     .pcs_mret_o(pcs_mret_o),
     .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
     .pcs_restore_done_i(pcs_restore_done_i),
-    .start_pcs_o(start_pcs_o)
+    .start_pcs_o(start_pcs_o),
+    .pcs_acive_i
   );
 
 

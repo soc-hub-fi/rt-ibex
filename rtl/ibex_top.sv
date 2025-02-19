@@ -33,8 +33,9 @@ module ibex_top import ibex_pkg::*; #(
   parameter bit          ICacheScramble   = 1'b0,
   parameter bit          CLIC             = 1'b1,
   parameter bit          HardwareStacking = 1'b0,
+  parameter pcs_e        PCSType          = ShiftRegPCS,
   parameter int unsigned NumInterrupts    = 64,
-  parameter int unsigned NumPrioBits      = 4,
+  parameter int unsigned NumPrioBits      = 2,
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
@@ -79,7 +80,8 @@ module ibex_top import ibex_pkg::*; #(
   input  logic                         data_err_i,
 
   // Interrupt interface
-  input  logic [NumInterrupts-1:0]    irq_i,
+  input  logic                         irq_is_pcs_i,
+  input  logic [NumInterrupts-1:0]     irq_i,
   input  logic [7:0]                   irq_level_i,
   input  logic                         irq_shv_i,
   input  logic [1:0]                   irq_priv_i,
@@ -159,7 +161,6 @@ module ibex_top import ibex_pkg::*; #(
   localparam bit          MemECC                = SecureIbex;
   localparam int unsigned MemDataWidth          = MemECC ? 32 + 7 : 32;
   localparam bit          RegisterWindowing     = ((RegFile == RegFileWindowFF) | (RegFile == RegFileWindowLatch)) ? 1 : 0;
-  localparam bit          PCS                   = (RegFile == RegFilePCS) ? 1 : 0;
   // Icache parameters
   localparam int unsigned BusSizeECC        = ICacheECC ? (BUS_SIZE + 7) : BUS_SIZE;
   localparam int unsigned LineSizeECC       = BusSizeECC * IC_LINE_BEATS;
@@ -232,9 +233,11 @@ module ibex_top import ibex_pkg::*; #(
   logic                        rf_decrement_ptr;
   logic                        rf_window_full;
 
-  logic [31:0]                 rfw_mepc;
-  logic [31:0]                 rfw_mcause;
+  logic [31:0]                 rf_mepc;
+  logic [31:0]                 rf_mcause;
   logic                        rfw_save_csr;
+
+  logic                        pcs_active;
   /////////////////////
   // Main clock gate //
   /////////////////////
@@ -419,6 +422,7 @@ module ibex_top import ibex_pkg::*; #(
 
     .pcs_mret_o   (mret_core),
     .pcs_restore_done_i(pcs_restore_done),
+    .pcs_acive_i  (pcs_active),
     .next_instr_mret_o (next_mret),
     .start_pcs_o(start_pcs),
 
@@ -641,10 +645,12 @@ end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
     rt_ibex_register_file_pcs #(
       .RV32E            (RV32E),
       .DataWidth        (RegFileDataWidth),
-      .IrqLevelWidth    (NumPriorities)
+      .IrqLevelWidth    (NumPriorities),
+      .PCSType          (PCSType)
     ) register_file_i (
       .clk_i       (clk),
       .rst_ni      (rst_ni),
+      .irq_is_pcs_i,
       .irq_level_i (irq_level_i),
       .irq_ack_i   (irq_ack),
       .irq_exit_i  (mret_core),
@@ -653,7 +659,8 @@ end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
       .mepc_o      (rf_mepc),
       .mcause_o    (rf_mcause),
       .pcs_restore_done_o(pcs_restore_done),
-      .next_mret_i (next_mret),
+      .pcs_active_o(pcs_active),
+      .next_mret_i (mret_core),
       .raddr_a_i   (rf_raddr_a),
       .rdata_a_o   (rf_rdata_a_ecc),
       .raddr_b_i   (rf_raddr_b),

@@ -13,7 +13,7 @@
 module rt_ibex_register_file_pcs import ibex_pkg::*; #(
   parameter bit          RV32E         = 0,
   parameter int unsigned DataWidth     = 32,
-  parameter pcs_e        PCSType       = MemoryPCS,
+  parameter pcs_e        PCSType       = ShiftRegLatchPCS,
   parameter int unsigned IrqLevelWidth = 8
 ) (
   // Clock and Reset
@@ -25,6 +25,7 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
   input  logic [IrqLevelWidth-1:0] irq_level_i,
   input  logic irq_ack_i,
   input  logic irq_exit_i,
+  input  logic irq_is_pcs_i,
 
   // Exposed CSRs
   input  logic [31:0] mepc_i,
@@ -32,6 +33,7 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
   output logic [31:0] mepc_o,
   output logic [31:0] mcause_o,
   output logic        pcs_restore_done_o,
+  output logic        pcs_active_o,
   input  logic        next_mret_i,
 
   //Read port R1
@@ -63,6 +65,26 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
   logic [NrSavedRegs-1:0][DataWidth-1:0] store_data;
   logic [NrSavedRegs-1:0][DataWidth-1:0] restore_data;
   logic restore_en;
+  logic pcs_push_req;
+  logic pcs_pop_req;
+  logic        [IrqLevelWidth-1:0] pcs_cntr;
+  logic signed [IrqLevelWidth-1:0] pcs_delta;
+  logic pcs_active;
+
+  assign pcs_active = (pcs_cntr != 0);
+  assign pcs_active_o = pcs_active;
+
+  always_comb
+    begin
+      pcs_delta = 0;
+      if (pcs_push_req)
+        pcs_delta = 1;
+      else if (restore_en)
+        pcs_delta = -1;
+    end
+
+  assign pcs_push_req = irq_ack_i & irq_is_pcs_i;
+  assign pcs_pop_req  = next_mret_i & pcs_active;
 
   if ( PCSType == MemoryPCS ) begin : gen_memory_impl
     rt_ibex_pcs_memory #(
@@ -73,12 +95,12 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
       .clk_i         (clk_i),
       .rst_ni        (rst_ni),
       .irq_level_i   (irq_level_i),
-      .irq_ack_i     (irq_ack_i),
+      .irq_ack_i     (pcs_push_req),
       .irq_exit_i    (irq_exit_i),
       .store_data_i  (store_data),
       .restore_data_o(restore_data),
       .restore_en_o  (restore_en),
-      .next_mret_i   (next_mret_i)
+      .next_mret_i   (pcs_pop_req)
     );
   end else if ( PCSType == ShiftRegPCS ) begin : gen_shift_reg_impl
     rt_ibex_pcs_lifo #(
@@ -89,15 +111,38 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
       .clk_i         (clk_i),
       .rst_ni        (rst_ni),
       .irq_level_i   (irq_level_i),
-      .irq_ack_i     (irq_ack_i),
+      .irq_ack_i     (pcs_push_req),
       .irq_exit_i    (irq_exit_i),
       .store_data_i  (store_data),
       .restore_data_o(restore_data),
       .restore_en_o  (restore_en),
-      .next_mret_i   (next_mret_i)
+      .next_mret_i   (pcs_pop_req)
+    );
+  end else if ( PCSType == ShiftRegLatchPCS ) begin : gen_shift_reg_latch_impl
+    rt_ibex_pcs_lifo_latch #(
+      .NrSavedRegs   (NrSavedRegs),
+      .DataWidth     (DataWidth),
+      .IrqLevelWidth (IrqLevelWidth)
+    ) i_pcs_shiftreg (
+      .clk_i         (clk_i),
+      .rst_ni        (rst_ni),
+      .irq_level_i   (irq_level_i),
+      .irq_ack_i     (pcs_push_req),
+      .irq_exit_i    (irq_exit_i),
+      .store_data_i  (store_data),
+      .restore_data_o(restore_data),
+      .restore_en_o  (restore_en),
+      .next_mret_i   (pcs_pop_req)
     );
   end
 
+  always_ff @(posedge clk_i or negedge rst_ni) begin : pcs_util_cnt
+    if(!rst_ni) begin
+      pcs_cntr       <= 1'b0;
+    end else begin
+      pcs_cntr       <= pcs_cntr + pcs_delta;
+    end
+  end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : signal_done
     if(!rst_ni) begin
