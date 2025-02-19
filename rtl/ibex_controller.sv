@@ -609,7 +609,8 @@ module ibex_controller #(
         // normal execution flow
         // in debug mode or single step mode we leave immediately (wfi=nop)
         // wake-up from sleep on NMI, internal interrupts for CLINT, all interrupts for CLIC, and debug requests
-        if (handle_irq || irq_nm || irq_pending_i || irq_wu_ctrl_i || debug_req_i || debug_mode_q || debug_single_step_i) begin
+        if (handle_irq || irq_nm || irq_pending_i || irq_wu_ctrl_i
+          || debug_req_i || debug_mode_q || debug_single_step_i) begin
           ctrl_fsm_ns = FIRST_FETCH;
         end else begin
           // Make sure clock remains disabled.

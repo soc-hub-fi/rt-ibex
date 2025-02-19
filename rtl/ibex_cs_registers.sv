@@ -941,13 +941,13 @@ module ibex_cs_registers #(
       end
 
       // fast RF mepc/mcause restore for Register windowing and PCS
-      csr_fast_rf_i: begin 
+      csr_fast_rf_i: begin
         mepc_en        = 1'b1;
         mepc_d         = rf_mepc_i;
 
         mcause_en      = 1'b1;
         mcause_d       = rf_mcause_i;
-      end  
+      end
 
       csr_save_cause_i: begin
         unique case (1'b1)
