@@ -33,11 +33,16 @@ logic [MemWidth-1:0] store_data, restore_data;
 logic [MemWidth-1:0] shift_reg_d [MemDepth];
 logic [MemWidth-1:0] shift_reg_q [MemDepth];
 
+logic clk_gated, clk_en, clk_en_q;
+assign clk_gated = clk_i & (clk_en | clk_en_q);
+
 always_ff @(posedge clk_i or negedge rst_ni) begin : state_reg
   if (~rst_ni) begin
     curr_state <= IDLE;
+    clk_en_q   <= 0;
   end else begin
     curr_state <= next_state;
+    clk_en_q   <= clk_en;
   end
 end
 
@@ -52,16 +57,22 @@ always_comb begin : ctrl_fsm
 
   next_state   = IDLE;
   restore_en_o = '0;
+  clk_en       =  0;
+
 
   case (curr_state)
     IDLE: begin
       if (irq_ack_i) begin
+        clk_en     = 1;
         next_state = STORE;
       end else if (next_mret_i) begin
+        clk_en     = 1;
         next_state = RESTORE;
       end
     end
+    STORE: clk_en = 1;
     RESTORE: begin
+      clk_en     = 1;
       restore_en_o = 1;
       next_state = IDLE;
     end
@@ -73,7 +84,7 @@ end
 
 for (genvar ii=0; ii < MemDepth; ii++) begin : g_shift_reg
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
+  always_ff @(posedge clk_gated or negedge rst_ni) begin
     if (~rst_ni) begin
       shift_reg_q[ii] <= '0;
     end else begin
