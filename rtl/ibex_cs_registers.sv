@@ -930,7 +930,7 @@ module ibex_cs_registers #(
       // fast LSU mepc/mcause restore for Hardware Stacking
       csr_fast_lsu_i: begin
         if(lsu_rdata_valid_i) begin
-          if(stacking_csr_select_i) begin   // save mepc
+          if(!stacking_csr_select_i) begin   // save mepc
             mepc_en        = 1'b1;
             mepc_d         = lsu_rdata_i;
           end else begin
