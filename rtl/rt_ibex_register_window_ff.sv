@@ -244,12 +244,9 @@ module rt_ibex_register_window_ff #(
   for (genvar i = 1; i < NUM_WORDS; i++) begin : g_rf_flops
     logic [DataWidth-1:0] rf_reg_q;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        rf_reg_q <= WordZeroVal;
-      end else if (we_a_dec[i]) begin
+    always_ff @(posedge clk_i) begin
+      if (we_a_dec[i]) 
         rf_reg_q <= wdata_a_i;
-      end
     end
 
     assign rf_reg[i] = rf_reg_q;
@@ -259,12 +256,9 @@ module rt_ibex_register_window_ff #(
   for (genvar i = 1; i < NumRegisterWindows; i++) begin : g_rf_flops_aux
     logic [2*DataWidth-1:0] aux_rf_reg_q;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        aux_rf_reg_q <= WordZeroVal;
-      end else if (aux_we_a_dec[i]) begin
+    always_ff @(posedge clk_i) begin
+      if (aux_we_a_dec[i]) 
         aux_rf_reg_q <= {mcause_i, mepc_i};
-      end
     end
 
     assign aux_mem[i] = aux_rf_reg_q;

@@ -84,12 +84,8 @@ end
 
 for (genvar ii=0; ii < MemDepth; ii++) begin : g_shift_reg
 
-  always_ff @(posedge clk_gated or negedge rst_ni) begin
-    if (~rst_ni) begin
-      shift_reg_q[ii] <= '0;
-    end else begin
-      shift_reg_q[ii] <= shift_reg_d[ii];
-    end
+  always_ff @(posedge clk_gated) begin
+    shift_reg_q[ii] <= shift_reg_d[ii];
   end
 
   always_comb begin : d_select

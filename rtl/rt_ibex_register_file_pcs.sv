@@ -163,10 +163,8 @@ module rt_ibex_register_file_pcs import ibex_pkg::*; #(
   for (genvar i = 1; i < NumWords; i++) begin : g_rf_flops
     logic [DataWidth-1:0] rf_reg_q;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        rf_reg_q <= WordZeroVal;
-      end else if (restore_en) begin
+    always_ff @(posedge clk_i) begin
+      if (restore_en) begin
         rf_reg_q <= rf_reg_restore[i]; //'x;
       end else if (we_a_dec[i]) begin
         rf_reg_q <= wdata_a_i;
