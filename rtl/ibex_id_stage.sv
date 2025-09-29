@@ -727,6 +727,7 @@ module ibex_id_stage #(
     .BranchPredictor(BranchPredictor),
     .MemECC(MemECC),
     .HardwareStacking(HardwareStacking),
+    .NUM_INTERRUPTS (NUM_INTERRUPTS),
     .RegisterWindowing(RegisterWindowing)
   ) controller_i (
     .clk_i (clk_i),

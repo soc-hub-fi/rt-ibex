@@ -698,6 +698,7 @@ module ibex_core import ibex_pkg::*; #(
     .BranchPredictor(BranchPredictor),
     .MemECC         (MemECC),
     .CLIC           (CLIC),
+    .NUM_INTERRUPTS (NUM_INTERRUPTS),
     .RegisterWindowing(RegisterWindowing),
     .HardwareStacking(HardwareStacking)
   ) id_stage_i (
