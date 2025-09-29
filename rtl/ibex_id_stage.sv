@@ -851,7 +851,7 @@ module ibex_id_stage #(
 
     // pcs support
     .pcs_mret_o(pcs_mret_o),
-    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),
+    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id_o),
     .pcs_restore_done_i(pcs_restore_done_i),
     .start_pcs_o(start_pcs_o),
     .pcs_acive_i
