@@ -33,7 +33,8 @@ module ibex_top_tracing import ibex_pkg::*; #(
   parameter lfsr_seed_t  RndCnstLfsrSeed  = RndCnstLfsrSeedDefault,
   parameter lfsr_perm_t  RndCnstLfsrPerm  = RndCnstLfsrPermDefault,
   parameter int unsigned DmHaltAddr       = 32'h1A110800,
-  parameter int unsigned DmExceptionAddr  = 32'h1A110808
+  parameter int unsigned DmExceptionAddr  = 32'h1A110808,
+  parameter int unsigned MClicBaseAddr    = 32'h00050000
 ) (
   // Clock and Reset
   input  logic                         clk_i,
@@ -193,6 +194,7 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .RndCnstLfsrPerm  ( RndCnstLfsrPerm  ),
     .DmHaltAddr       ( DmHaltAddr       ),
     .DmExceptionAddr  ( DmExceptionAddr  ),
+    .MClicBaseAddr    ( MClicBaseAddr    ),
     .CLIC             ( CLIC             ),
     .HardwareStacking ( HardwareStacking ),
     .NumInterrupts    ( NumInterrupts    )
