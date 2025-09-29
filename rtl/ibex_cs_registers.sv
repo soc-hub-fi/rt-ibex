@@ -198,7 +198,7 @@ module ibex_cs_registers #(
     | (RV32BExtra        << 23)  // X - Non-standard extensions present
     | (32'(CSR_MISA_MXL) << 30); // M-XLEN
 
-  localparam MTVEC_MODE        = CLIC ? 2'b11 : 2'b01;
+  localparam logic [31:0] MTVEC_MODE     = CLIC ? 32'b11 : 32'b01;
 
   // Interrupt mask
   localparam IRQ_MASK = {32{1'b1}};
@@ -275,7 +275,7 @@ module ibex_cs_registers #(
   logic        mnxti_en;
   mintstatus_t mintstatus_q, mintstatus_d;
   logic        mintstatus_en;
-  logic [31:0] mintthresh_q, mintthresh_d;
+  logic  [7:0] mintthresh_q, mintthresh_d;
   logic        mintthresh_en;
   logic [31:0] mscratchsw_q, mscratchsw_d;
   logic        mscratchsw_en;
@@ -298,7 +298,7 @@ module ibex_cs_registers #(
 
   // CLIC signals
   logic [        NUM_INTERRUPTS-1:0] irq_q, irq_d;
-  logic                              irq_level_q, irq_level_d;
+  logic                        [7:0] irq_level_q, irq_level_d;
   logic                              irq_shv_q, irq_shv_d;
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_q, irq_id_instant_d;
 
@@ -367,13 +367,13 @@ module ibex_cs_registers #(
   logic [2:0]  unused_csr_addr;
 
   logic mnxti_pass;
-  assign mnxti_pass = (irq_q) && CLIC &&
+  assign mnxti_pass = (|irq_q) && CLIC &&
             (irq_level_q > ((mcause_q.mpil > mintthresh_q) ? mcause_q.mpil : mintthresh_q)) &&
             ((~CLIC_SHV) || (~irq_shv_q));
 
   assign unused_boot_addr = boot_addr_i[7:0];
 
-  assign mtvec_mode_o = MTVEC_MODE; // TODO: add support for vectored and CLIC mtvec mode
+  assign mtvec_mode_o = MTVEC_MODE[1:0]; // TODO: add support for vectored and CLIC mtvec mode
   assign csr_mtvt_o   = mtvt_q;
   assign mintstatus_o = mintstatus_q;
 
@@ -406,14 +406,22 @@ module ibex_cs_registers #(
   assign irq_level_d = irq_level_i;
 
   assign m_irq_enable_o = mstatus_q.mie && !(dcsr_q.step && !dcsr_q.stepie);
-  assign mie_bypass_o = ((csr_addr_i == CSR_MIE) && csr_mie_we) ? csr_mie_wdata & IRQ_MASK : mie_q;
+  assign mie_bypass_o = ((csr_addr_i == CSR_MIE) && csr_mie_we) ? csr_mie_wdata & IRQ_MASK : 32'(mie_q);
   assign mintthresh_o = mintthresh_q;
 
   // Only support machine mode
   assign priv_lvl_o   = PRIV_LVL_M;
   assign irq_id_instant_d = irq_id_instant_i;
 
-  assign csr_mcause_o = mcause_q;
+  assign csr_mcause_o = {mcause_q.irq,
+                         mcause_q.minhv,
+                         mcause_q.mpp,
+                         mcause_q.mpie,
+                         3'b0,
+                         mcause_q.mpil,
+                         4'b0,
+                         mcause_q.cause
+                        };
 
 
   // MIE CSR operation logic
@@ -429,11 +437,11 @@ module ibex_cs_registers #(
         csr_mie_we    = CLIC ? 1'b0 : 1'b1;
       end
       CSR_OP_SET: begin
-        csr_mie_wdata = csr_wdata_i | mie_q;
+        csr_mie_wdata = csr_wdata_i | 32'(mie_q);
         csr_mie_we    = CLIC ? 1'b0 : 1'b1;
       end
       CSR_OP_CLEAR: begin
-        csr_mie_wdata = (~csr_wdata_i) & mie_q;
+        csr_mie_wdata = (~csr_wdata_i) & 32'(mie_q);
         csr_mie_we    = CLIC ? 1'b0 : 1'b1;
       end
       CSR_OP_READ: begin
@@ -544,8 +552,8 @@ module ibex_cs_registers #(
       // CLIC registers
       CSR_MNXTI: begin
         if (mnxti_pass) begin
-          csr_rdata_int[31:8] = mtvt_q;
-          csr_rdata_int[ 7:2] = irq_id_instant_q;
+          csr_rdata_int[31:8] = mtvt_q[31:8];
+          csr_rdata_int[ 7:2] = 6'(irq_id_instant_q);
           csr_rdata_int[ 1:0] = '0; // XLEN is fixed to 32, so XLEN/8 = 4
         end else begin
           // to check if irq_q is onehot signal
@@ -560,7 +568,7 @@ module ibex_cs_registers #(
 
       CSR_MINTSATUS:    csr_rdata_int = mintstatus_q;
 
-      CSR_MINTTHRESH:   csr_rdata_int = mintthresh_q;
+      CSR_MINTTHRESH:   csr_rdata_int = 32'(mintthresh_q);
 
       CSR_MSCRATCHSW:   csr_rdata_int = mscratchsw_q;
 
@@ -754,7 +762,7 @@ module ibex_cs_registers #(
     mnxti_d        = csr_wdata_int;
     mnxti_d        = csr_wdata_int;
     mintstatus_d   = csr_wdata_int;
-    mintthresh_d   = csr_wdata_int;
+    mintthresh_d   = csr_wdata_int[7:0];
     mscratchsw_d   = csr_wdata_int;
     mscratchswl_d  = csr_wdata_int;
     mclicbase_d    = {csr_wdata_int[31:12], 12'b0};
@@ -935,7 +943,12 @@ module ibex_cs_registers #(
             mepc_d         = lsu_rdata_i;
           end else begin
             mcause_en      = 1'b1;
-            mcause_d       = lsu_rdata_i;
+            mcause_d.irq   = lsu_rdata_i[31];
+            mcause_d.minhv = lsu_rdata_i[30];
+            mcause_d.mpp   = lsu_rdata_i[29:28];
+            mcause_d.mpie  = lsu_rdata_i[27];
+            mcause_d.mpil  = lsu_rdata_i[23:16];
+            mcause_d.cause = lsu_rdata_i[11:0];
           end
         end
       end
@@ -946,7 +959,12 @@ module ibex_cs_registers #(
         mepc_d         = rf_mepc_i;
 
         mcause_en      = 1'b1;
-        mcause_d       = rf_mcause_i;
+        mcause_d.irq   = rf_mcause_i[31];
+        mcause_d.minhv = rf_mcause_i[30];
+        mcause_d.mpp   = rf_mcause_i[29:28];
+        mcause_d.mpie  = rf_mcause_i[27];
+        mcause_d.mpil  = rf_mcause_i[23:16];
+        mcause_d.cause = rf_mcause_i[11:0];
       end
 
       csr_save_cause_i: begin
@@ -1101,7 +1119,7 @@ module ibex_cs_registers #(
   // Qualify incoming interrupt requests in mip CSR with mie CSR for controller and to re-enable
   // clock upon WFI (must be purely combinational).
   //assign ibex_irqs_o        =
-  assign irq_pending_o = |mip & mie_q;
+  assign irq_pending_o = |mip & |mie_q;
 
   ////////////////////////
   // CSR instantiations //
@@ -1369,7 +1387,7 @@ module ibex_cs_registers #(
 
   // MINTTHRESH
   ibex_csr #(
-    .Width     (32),
+    .Width     (8),
     .ShadowCopy(ShadowCSR),
     .ResetValue('0)
   ) u_mintthresh_csr (

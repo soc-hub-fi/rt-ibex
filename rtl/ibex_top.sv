@@ -350,6 +350,7 @@ module ibex_top import ibex_pkg::*; #(
     .DmHaltAddr       (DmHaltAddr),
     .DmExceptionAddr  (DmExceptionAddr),
     .MCLICBASE_ADDR   (MClicBaseAddr),
+    .NUM_INTERRUPTS   (NumInterrupts),
     .HardwareStacking (HardwareStacking),
     .RegisterWindowing(RegisterWindowing)
   ) u_ibex_core (
@@ -424,7 +425,7 @@ module ibex_top import ibex_pkg::*; #(
     .pcs_restore_done_i(pcs_restore_done),
     .pcs_acive_i  (pcs_active),
     .next_instr_mret_o (next_mret),
-    .start_pcs_o(start_pcs),
+    .start_pcs_o(/*start_pcs*/),
 
 
 `ifdef RVFI

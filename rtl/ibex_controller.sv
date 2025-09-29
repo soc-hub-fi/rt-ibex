@@ -501,7 +501,7 @@ module ibex_controller #(
 
   assign debug_cause_o = debug_cause_q;
 
-  assign clic_exccode = 12'b0 | irq_id_ctrl_i;
+  assign clic_exccode = 12'b0 | 12'(irq_id_ctrl_i);
 
   assign mask_illegal_inst_o = mask_illegal_inst;
 
@@ -773,7 +773,7 @@ module ibex_controller #(
           if (irq_nm && !nmi_mode_q) begin
             exc_cause_o =
               irq_nm_ext_i ? ExcCauseIrqNm :
-                             '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: irq_nm_int_cause};
+                             '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'(irq_nm_int_cause)};
 
             if (irq_nm_int & !irq_nm_ext_i) begin
               csr_mtval_o = irq_nm_int_mtval;
@@ -813,7 +813,7 @@ module ibex_controller #(
         csr_save_cause_o  = 1'b1;
         csr_save_if_o     = 1'b1;
 
-        csr_cause_o       = {1'b1,irq_id_ctrl_i};
+        csr_cause_o       = {irq_id_ctrl_i};
 
 
         csr_irq_level_o   = irq_level_ctrl_i;

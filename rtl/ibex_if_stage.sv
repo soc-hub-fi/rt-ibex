@@ -199,15 +199,15 @@ module ibex_if_stage import ibex_pkg::*; #(
 
   assign unused_exc_cause = |{exc_cause.irq};
 
-  assign clic_vtable_entry_addr = { m_trap_base_addr_clic_shv_i[31:6], 6'b0} + {m_exc_vec_pc_mux_i, 2'b0};
+  assign clic_vtable_entry_addr = { m_trap_base_addr_clic_shv_i[31:6], 6'b0} + {30'(m_exc_vec_pc_mux_i), 2'b0};
 
   // exception PC selection mux
   always_comb begin : exc_pc_mux
-    irq_vec = exc_cause.cause;
+    irq_vec = exc_cause.cause[4:0];
 
     if (exc_cause.irq) begin
       // All internal interrupts go to the NMI vector
-      irq_vec = ExcCauseIrqNm.cause;
+      irq_vec = ExcCauseIrqNm.cause[4:0];
     end
 
     unique case (exc_pc_mux_i)

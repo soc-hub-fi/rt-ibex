@@ -57,8 +57,6 @@ module ibex_core import ibex_pkg::*; #(
 
   input  logic [31:0]                  hart_id_i,
   input  logic [31:0]                  boot_addr_i,
-  //input  logic [31:0]                  mtvec_addr_i,
-  //input  logic [31:0]                  mtvt_addr_i,
 
   // Instruction memory interface
   output logic                         instr_req_o,
@@ -465,7 +463,7 @@ module ibex_core import ibex_pkg::*; #(
   assign debug_mode_o = debug_mode;
 
   assign m_exc_vec_pc_mux_id = ((!CLIC && mtvec_mode == 2'h1) || (CLIC && CLIC_SHV && irq_shv_i))
-    ? exc_cause.cause : {($clog2(NUM_INTERRUPTS)){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
+    ? exc_cause.cause[$clog2(NUM_INTERRUPTS)-1:0] : {$clog2(NUM_INTERRUPTS){1'b0}}; //TODO CLIC==1 <=> mtvec_mode==2'b11, remove CLIC elab param
 
   assign irq_nm                 = irq_i[31];
   assign ibex_irqs.irq_software = irq_i[3];
@@ -529,6 +527,7 @@ module ibex_core import ibex_pkg::*; #(
     .MemECC           (MemECC),
     .CLIC             (CLIC),
     .CLIC_SHV         (CLIC_SHV),
+    .NUM_INTERRUPTS   (NUM_INTERRUPTS),
     .MemDataWidth     (MemDataWidth)
   ) if_stage_i (
     .clk_i (clk_i),
@@ -886,7 +885,7 @@ module ibex_core import ibex_pkg::*; #(
 
     // pcs support
     .pcs_mret_o(pcs_mret_o),
-    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),// FIXME: NOT CONNECTED
+    //.pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id),// FIXME: NOT CONNECTED
     .pcs_restore_done_i         (pcs_restore_done_i),
     .start_pcs_o(start_pcs_o),
     .pcs_acive_i,

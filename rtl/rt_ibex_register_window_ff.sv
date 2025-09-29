@@ -91,7 +91,7 @@ module rt_ibex_register_window_ff #(
 
   assign window_full_o  = window_full;
 
-  assign window_full    = window_ptr == ((NumRegisterWindows-1) * WindowSize);
+  assign window_full    = 32'(window_ptr) == ((NumRegisterWindows-1) * WindowSize);
 
 
   always_comb begin
@@ -148,9 +148,9 @@ module rt_ibex_register_window_ff #(
   end
 
 
-  assign windowed_raddr_a = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_ra;
-  assign windowed_raddr_b = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_rb;
-  assign windowed_waddr   = (BASE_WINDOW_SIZE - WindowSize) + window_ptr + offset_w;
+  assign windowed_raddr_a = ADDR_WIDTH'(BASE_WINDOW_SIZE - WindowSize) + ADDR_WIDTH'(window_ptr) + ADDR_WIDTH'(offset_ra);
+  assign windowed_raddr_b = ADDR_WIDTH'(BASE_WINDOW_SIZE - WindowSize) + ADDR_WIDTH'(window_ptr) + ADDR_WIDTH'(offset_rb);
+  assign windowed_waddr   = ADDR_WIDTH'(BASE_WINDOW_SIZE - WindowSize) + ADDR_WIDTH'(window_ptr) + ADDR_WIDTH'(offset_w);
 
   assign offset_sel  = (window_ptr != 0);
 
@@ -164,13 +164,13 @@ module rt_ibex_register_window_ff #(
       window_ptr   <= '0;
     end else begin
       if (increment_ptr_i) begin
-        if(!(window_ptr == NUM_WORDS-WindowSize)) begin  // window_pointer is NOT pointing to the last window
-          window_ptr <= window_ptr + WindowSize;
+        if(!(window_ptr == ADDR_WIDTH'((NUM_WORDS-WindowSize)))) begin  // window_pointer is NOT pointing to the last window
+          window_ptr <= window_ptr + ADDR_WIDTH'(WindowSize);
         end
       end
 
       if(decrement_ptr_i) begin
-        window_ptr <= window_ptr - WindowSize;
+        window_ptr <= window_ptr - ADDR_WIDTH'(WindowSize);
       end
     end
   end
@@ -182,7 +182,7 @@ module rt_ibex_register_window_ff #(
       aux_ptr   <= '0;
     end else begin
       if (increment_ptr_i) begin
-        if(!(aux_ptr == NumRegisterWindows-1)) begin  // window_pointer is NOT pointing to the last window
+        if(!(aux_ptr == 2'(NumRegisterWindows-1))) begin  // window_pointer is NOT pointing to the last window
           aux_ptr <= aux_ptr + 1;
         end
       end
