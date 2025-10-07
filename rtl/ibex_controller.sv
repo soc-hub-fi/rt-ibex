@@ -223,14 +223,20 @@ module ibex_controller #(
   logic abort;
 
 `ifndef SYNTHESIS
+
+  logic pc_in_rom; // ignore illegal instruction prints in bootROM range
+  assign pc_in_rom = i_rt_ibex.u_ibex_top.u_ibex_core.if_stage_i.pc_id_o < 32'h1000;
+
   // synopsys translate_off
   // make sure we are called later so that we do not generate messages for
   // glitches
   always_ff @(negedge clk_i) begin
     // print warning in case of decoding errors
     if ((ctrl_fsm_cs == DECODE) && instr_valid_i && !instr_fetch_err_i && illegal_insn_d) begin
-      $display("%t: Illegal instruction (hart %0x) at PC 0x%h: 0x%h", $time, u_ibex_core.hart_id_i,
+      if(~pc_in_rom) begin
+        $display("%t: Illegal instruction (hart %0x) at PC 0x%h: 0x%h", $time, u_ibex_core.hart_id_i,
                pc_id_i, id_stage_i.instr_rdata_i);
+      end
     end
   end
   // synopsys translate_on
