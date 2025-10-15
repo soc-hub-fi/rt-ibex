@@ -234,9 +234,10 @@ module ibex_if_stage import ibex_pkg::*; #(
       PC_BOOT: fetch_addr_n = { boot_addr_i[31:9], 9'h100 };
       PC_JUMP: fetch_addr_n = branch_target_ex_i;
       PC_EXC: begin                                                          //   Jump to handler
-        if(CLIC && CLIC_SHV && irq_shv_i)
+        if(CLIC && CLIC_SHV && irq_shv_i) begin
           minhv_o = 1'b1;
-          fetch_addr_n = exc_pc; // set PC to exception handler
+        end
+        fetch_addr_n = exc_pc; // set PC to exception handler
       end
       PC_ERET: fetch_addr_n = csr_mepc_i;                   // restore PC when returning from EXC
       PC_DRET: fetch_addr_n = csr_depc_i;
