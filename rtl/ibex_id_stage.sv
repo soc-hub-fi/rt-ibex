@@ -129,7 +129,7 @@ module ibex_id_stage #(
   input  logic                      csr_mstatus_tw_i,
   input  logic                      illegal_csr_insn_i,
   input  logic                      data_ind_timing_i,
-  input  logic                      csr_mtvec_i,
+  //input  logic                      csr_mtvec_i,
 
   // Interface to load store unit
   output logic                      lsu_req_o,
@@ -233,7 +233,7 @@ module ibex_id_stage #(
 
   // pcs support
   output logic                      pcs_mret_o,
-  output logic                      pcs_csr_restore_mret_id_o,
+  //output logic                      pcs_csr_restore_mret_id_o,
   input  logic                      pcs_restore_done_i,
   output logic                      start_pcs_o,
   input  logic                      pcs_acive_i,
@@ -852,7 +852,7 @@ module ibex_id_stage #(
 
     // pcs support
     .pcs_mret_o(pcs_mret_o),
-    .pcs_csr_restore_mret_id_o(pcs_csr_restore_mret_id_o),
+    .pcs_csr_restore_mret_id_o(),
     .pcs_restore_done_i(pcs_restore_done_i),
     .start_pcs_o(start_pcs_o),
     .pcs_acive_i
