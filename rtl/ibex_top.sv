@@ -508,6 +508,9 @@ if (RegFile == RegFileFF) begin : gen_regfile_ff
       .we_a_i   (rf_we_wb),
       .err_o    (rf_alert_major_internal)
     );
+  assign pcs_restore_done = 1'b0;
+  assign pcs_active = 1'b0;
+  
 end else if (RegFile == RegFileLatch) begin : gen_regfile_latch
       ibex_register_file_latch #(
         .RV32E            (RV32E),
@@ -534,6 +537,9 @@ end else if (RegFile == RegFileLatch) begin : gen_regfile_latch
         .we_a_i   (rf_we_wb),
         .err_o    (rf_alert_major_internal)
       );
+  assign pcs_restore_done = 1'b0;
+  assign pcs_active = 1'b0;
+  
 end else if (RegFile == RegFileWindowFF) begin : gen_regfile_win_ff
       rt_ibex_register_window_ff #(
         .RV32E            (RV32E),
@@ -574,6 +580,9 @@ end else if (RegFile == RegFileWindowFF) begin : gen_regfile_win_ff
 
         .save_csr_i(rfw_save_csr)
       );
+  assign pcs_restore_done = 1'b0;
+  assign pcs_active = 1'b0;
+  
 end else if (RegFile == RegFileWindowLatch) begin : gen_regfile_win_latch
       rt_ibex_register_window_latch #(
         .RV32E            (RV32E),
@@ -614,6 +623,9 @@ end else if (RegFile == RegFileWindowLatch) begin : gen_regfile_win_latch
 
         .save_csr_i(rfw_save_csr)
       );
+  assign pcs_restore_done = 1'b0;
+  assign pcs_active = 1'b0;
+
 end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
     ibex_register_file_fpga #(
       .RV32E            (RV32E),
@@ -641,6 +653,8 @@ end else if (RegFile == RegFileFPGA) begin : gen_regfile_fpga
       .err_o    (rf_alert_major_internal)
     );
     assign rf_alert_major_internal = '0;
+    assign pcs_restore_done = 1'b0;
+    assign pcs_active = 1'b0;
 
   end else if (RegFile == RegFilePCS) begin : gen_regfile_pcs
     rt_ibex_register_file_pcs #(
