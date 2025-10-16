@@ -682,8 +682,9 @@ module ibex_core import ibex_pkg::*; #(
     assign stacking_id_mux_ctrl = 1'b0;
     assign lsu_data_select      = 2'b00;
     assign stacking_done        = 1'b0;
-    assign stacking_instr_rdata_i = 32'h0;
-    assign stacking_instr_valid_i = 1'b0;
+    assign stacking_instr_rdata = 32'h0;
+    assign stacking_instr_rdata_c = 16'h0;
+    assign stacking_instr_valid = 1'b0;
     assign stacking_mcause_pending_o = 1'b0;
     assign stacking_instr_is_compressed = 1'b0;
   end
