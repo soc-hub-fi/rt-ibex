@@ -56,9 +56,15 @@ module rt_ibex_register_window_ff #(
   input  logic                 save_csr_i
 );
 
+assign rdata_a_o = '0;
+assign rdata_b_o = '0;
+assign err_o     = '0;
+assign mcause_o  = '0;
+assign mepc_o    = '0;
+
   // localparam int unsigned ADDR_WIDTH = RV32E ? 4 : 5;
   // localparam int unsigned NUM_WORDS  = 2**ADDR_WIDTH;
-
+/*
   localparam int unsigned BASE_WINDOW_SIZE = RV32E ? 16 : 32;
   localparam int unsigned NUM_WORDS   = BASE_WINDOW_SIZE + NumRegisterWindows * WindowSize;
   localparam int unsigned ADDR_WIDTH  = $clog2(NUM_WORDS);
@@ -403,6 +409,6 @@ module rt_ibex_register_window_ff #(
 
   // Signal not used in FF register file
   logic unused_test_en;
-  assign unused_test_en = test_en_i;
+  assign unused_test_en = test_en_i;*/
 
 endmodule
