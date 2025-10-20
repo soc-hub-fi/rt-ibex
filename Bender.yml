@@ -27,6 +27,7 @@ sources:
   - rtl/ibex_compressed_decoder.sv
   - rtl/ibex_decoder.sv
   - rtl/ibex_multdiv_fast.sv
+  - rtl/ibex_multdiv_slow.sv
   - rtl/ibex_prefetch_buffer.sv
   - rtl/ibex_register_file_ff.sv
   - rtl/ibex_register_file_latch.sv
