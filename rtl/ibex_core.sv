@@ -826,7 +826,7 @@ module ibex_core import ibex_pkg::*; #(
 
     // Interrupt Signals
     .csr_mstatus_mie_i( csr_mstatus_mie),
-    .irq_pending_i    ( irq_pending_o  ),
+    .irq_pending_i    ( |irq_i ),
     .ibex_irqs_i      ( ibex_irqs      ),
     .clic_irqs_i      ( clic_irqs      ),
     .irq_level_i      ( irq_level_i    ),
