@@ -520,6 +520,7 @@ module ibex_top
     assign pcs_active = 1'b0;
     assign rf_mepc = 32'h0;
     assign rf_mcause = 32'h0;
+    assign rf_window_full = 1'b0;
 
   end else if (RegFile == RegFileLatch) begin : gen_regfile_latch
     ibex_register_file_latch #(
@@ -551,6 +552,7 @@ module ibex_top
     assign pcs_active = 1'b0;
     assign rf_mepc = 32'h0;
     assign rf_mcause = 32'h0;
+    assign rf_window_full = 1'b0;
 
   end else if (RegFile == RegFileWindowFF) begin : gen_regfile_win_ff
     rt_ibex_register_window_ff #(
