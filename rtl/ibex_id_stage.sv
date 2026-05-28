@@ -700,7 +700,7 @@ NUM_INTERRUPTS
   assign mip_o = '0;
 
   // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
-  assign irq_wu_ctrl = (irq_level > max_thresh) && (|{clic_irqs_i, ibex_irqs_i});
+    assign irq_wu_ctrl = (irq_level_i > max_thresh) && (|{clic_irqs_i, ibex_irqs_i});
 
   //end
   //endgenerate
