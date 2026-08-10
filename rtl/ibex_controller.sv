@@ -474,6 +474,14 @@ module ibex_controller #(
   assign handle_irq = ~debug_mode_q & ~debug_single_step_i & ~nmi_mode_q &
     ( ((irq_pending_i | irq_req_ctrl_i) & irq_enabled)); // modified for CLIC
   //irq_nm |
+
+  // Latch the decision to take an interrupt. In IRQ_TAKEN the CLIC may already
+  // have retracted the interrupt request (kill handshake for a higher-priority
+  // interrupt arriving during the handoff), which would drop handle_irq and
+  // cause a mis-vector to the CLIC vector table entry 0. Use the latched
+  // decision instead of the live request in IRQ_TAKEN.
+  logic irq_taken_d, irq_taken_q;
+  assign irq_taken_d = (ctrl_fsm_ns == IRQ_TAKEN);
   // generate ID of fast interrupts, highest priority to lowest ID
   //always_comb begin : gen_mfip_id
   //  mfip_id = 4'd0;
@@ -768,7 +776,7 @@ module ibex_controller #(
 
         start_pcs_o      = 1'b1;
 
-        if (handle_irq) begin
+        if (irq_taken_q) begin
           // abort             = 1'b1;
 
 
@@ -1163,6 +1171,7 @@ module ibex_controller #(
       store_err_q             <= 1'b0;
       exc_req_q               <= 1'b0;
       illegal_insn_q          <= 1'b0;
+      irq_taken_q             <= 1'b0;
     end else begin
       ctrl_fsm_cs             <= ctrl_fsm_ns;
       nmi_mode_q              <= nmi_mode_d;
@@ -1173,6 +1182,7 @@ module ibex_controller #(
       store_err_q             <= store_err_d;
       exc_req_q               <= exc_req_d;
       illegal_insn_q          <= illegal_insn_d;
+      irq_taken_q             <= irq_taken_d;
     end
   end
 

@@ -693,7 +693,7 @@ NUM_INTERRUPTS
   logic irq_wu_ctrl;
 
   assign max_thresh = mintthresh_i > mintstatus_i.mil ? mintthresh_i : mintstatus_i.mil;
-  assign irq_req_ctrl = (irq_level > max_thresh) && (|{clic_irqs_q, ibex_irqs_q}) && m_irq_enable_i;
+  assign irq_req_ctrl = (irq_level > max_thresh) && (|{clic_irqs_i, ibex_irqs_i}) && m_irq_enable_i;
   assign irq_pending_thresh = irq_pending_i && (irq_level > max_thresh);
 
   // tied to zero in CLIC mode
