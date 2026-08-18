@@ -715,9 +715,10 @@ NUM_INTERRUPTS
     max_thresh_d = 8'h0;
 
     if (mintstatus_i.mil != 0) begin
-      if ((mintthresh_i > mintstatus_i.mil) & (mintthresh_i > max_thresh_q + max_thresh_incr)) begin
+      if ((mintthresh_i > mintstatus_i.mil) &
+        (9'(mintthresh_i) > 9'(max_thresh_q) + 9'(max_thresh_incr))) begin
         max_thresh_d = mintthresh_i;
-      end else if (mintstatus_i.mil > max_thresh_q + max_thresh_incr) begin
+      end else if (9'(mintstatus_i.mil) > 9'(max_thresh_q) + 9'(max_thresh_incr)) begin
         max_thresh_d = mintstatus_i.mil;
       end else begin
         // Saturate to prevent rollover
