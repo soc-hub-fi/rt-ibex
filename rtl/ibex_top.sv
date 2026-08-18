@@ -89,6 +89,7 @@ module ibex_top
     input  logic [              1:0] irq_priv_i,
     output logic                     irq_ack_o,
     output logic [  IrqLogWidth-1:0] irq_id_o,
+    input  logic [             63:0] mtime_i,
 
     // Scrambling Interface
     input  logic                        scramble_key_valid_i,
@@ -415,6 +416,7 @@ module ibex_top
       .irq_ack_o    (irq_ack),
       .irq_id_o     (irq_id_o),
       .irq_pending_o(irq_pending),
+      .mtime_i,
       //.mret_o           (mret_core),
 
 

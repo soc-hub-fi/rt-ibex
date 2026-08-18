@@ -112,6 +112,7 @@ module ibex_core
     output logic                              irq_pending_o,
     output logic                              irq_ack_o,
     output logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_o,
+    input  logic [                      63:0] mtime_i,
 
     //input  logic                         irq_software_i,
     //input  logic                         irq_timer_i,
@@ -694,7 +695,7 @@ NUM_INTERRUPTS
     assign stacking_mcause_pending      = 1'b0;
     assign stacking_instr_is_compressed = 1'b0;
     assign stacking_csr_fast_lsu        = 1'b0;
-    assign stacking_csr_select        = 1'b0;
+    assign stacking_csr_select          = 1'b0;
   end
 
   //////////////
@@ -848,6 +849,7 @@ NUM_INTERRUPTS
       .nmi_mode_o(nmi_mode),
       .mip_o(mip),
       .m_irq_enable_i(m_irq_enable),
+      .mtime_i,
 
       // Debug Signal
       .debug_mode_o         (debug_mode),
