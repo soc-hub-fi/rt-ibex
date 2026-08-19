@@ -690,6 +690,7 @@ NUM_INTERRUPTS
   // The effective interrupt threshold is the maximum of mintstatus.mil and
   // mintthresh.
   logic [7:0] max_thresh_d, max_thresh_q;
+  logic [7:0] mil_q;
   logic [7:0] max_thresh_incr;
   logic irq_req_ctrl;
   logic irq_wu_ctrl;
@@ -701,9 +702,11 @@ NUM_INTERRUPTS
     if (~rst_ni) begin
       max_thresh_q <= 0;
       mtime_clk_q  <= 0;
+      mil_q        <= 0;
     end else begin
       max_thresh_q <= max_thresh_d;
       mtime_clk_q  <= mtime_clk;
+      mil_q        <= mintstatus_i.mil;
     end
   end
 
@@ -718,6 +721,9 @@ NUM_INTERRUPTS
       if ((mintthresh_i > mintstatus_i.mil) &
         (9'(mintthresh_i) > 9'(max_thresh_q) + 9'(max_thresh_incr))) begin
         max_thresh_d = mintthresh_i;
+      end else
+      if (mintstatus_i.mil < mil_q) begin
+        max_thresh_d = mintstatus_i.mil;
       end else if (9'(mintstatus_i.mil) > 9'(max_thresh_q) + 9'(max_thresh_incr)) begin
         max_thresh_d = mintstatus_i.mil;
       end else begin
