@@ -689,59 +689,20 @@ NUM_INTERRUPTS
   // irq threshold and global interrupt are enabled (otherwise it wont' fire).
   // The effective interrupt threshold is the maximum of mintstatus.mil and
   // mintthresh.
-  logic [7:0] max_thresh_d, max_thresh_q;
-  logic [7:0] mil_q;
-  logic [7:0] max_thresh_incr;
+  logic [7:0] max_thresh;
   logic irq_req_ctrl;
   logic irq_wu_ctrl;
 
-  logic mtime_clk, mtime_clk_q;
-  assign mtime_clk = mtime_i[0];
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) begin
-      max_thresh_q <= 0;
-      mtime_clk_q  <= 0;
-      mil_q        <= 0;
-    end else begin
-      max_thresh_q <= max_thresh_d;
-      mtime_clk_q  <= mtime_clk;
-      mil_q        <= mintstatus_i.mil;
-    end
-  end
-
-  assign max_thresh_incr = (mtime_clk == mtime_clk_q) ? 8'h0 : 8'h1;
-
-  // max_thresh needs to increment dynamically with mtime
-  always_comb begin : max_thresh_assign
-
-    max_thresh_d = 8'h0;
-
-    if (mintstatus_i.mil != 0) begin
-      if ((mintthresh_i > mintstatus_i.mil) &
-        (9'(mintthresh_i) > 9'(max_thresh_q) + 9'(max_thresh_incr))) begin
-        max_thresh_d = mintthresh_i;
-      end else
-      if (mintstatus_i.mil < mil_q) begin
-        max_thresh_d = mintstatus_i.mil;
-      end else if (9'(mintstatus_i.mil) > 9'(max_thresh_q) + 9'(max_thresh_incr)) begin
-        max_thresh_d = mintstatus_i.mil;
-      end else begin
-        // Saturate to prevent rollover
-        max_thresh_d = (max_thresh_q == 8'hFF) ? 8'hFF : max_thresh_q + max_thresh_incr;
-      end
-    end
-  end
-
-  assign irq_req_ctrl = (irq_level > max_thresh_q) &&
+  assign max_thresh = mintthresh_i > mintstatus_i.mil ? mintthresh_i : mintstatus_i.mil;
+  assign irq_req_ctrl = (irq_level > max_thresh) &&
     (|{clic_irqs_i, ibex_irqs_i}) && m_irq_enable_i;
-  assign irq_pending_thresh = irq_pending_i && (irq_level > max_thresh_q);
+  assign irq_pending_thresh = irq_pending_i && (irq_level > max_thresh);
 
   // tied to zero in CLIC mode
   assign mip_o = '0;
 
   // Wake-up signal based on unregistered IRQ such that wake-up can be caused if no clock is present
-  assign irq_wu_ctrl = (irq_level_i > max_thresh_q) && (|{clic_irqs_i, ibex_irqs_i});
+  assign irq_wu_ctrl = (irq_level_i > max_thresh) && (|{clic_irqs_i, ibex_irqs_i});
 
   //end
   //endgenerate
