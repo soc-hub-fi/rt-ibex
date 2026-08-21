@@ -84,6 +84,7 @@ module ibex_cs_registers #(
   input  logic                              minhv_i,
   output ibex_pkg::priv_lvl_e               priv_lvl_o,
   output logic [31:0]                       csr_mcause_o,
+  input  logic [63:0]                       mtime_i,
 
   // PMP
   output ibex_pkg::pmp_cfg_t     csr_pmp_cfg_o  [PMPNumRegions],
@@ -365,6 +366,15 @@ module ibex_cs_registers #(
 
   logic [7:0]  unused_boot_addr;
   logic [2:0]  unused_csr_addr;
+
+  logic mtime_clk, mtime_clk_q;
+
+  assign mtime_clk = mtime_i[0];
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) mtime_clk_q <= 1'b0;
+    else         mtime_clk_q <= mtime_clk;
+  end
 
   logic mnxti_pass;
   assign mnxti_pass = (|irq_q) && CLIC &&

@@ -849,7 +849,6 @@ NUM_INTERRUPTS
       .nmi_mode_o(nmi_mode),
       .mip_o(mip),
       .m_irq_enable_i(m_irq_enable),
-      .mtime_i,
 
       // Debug Signal
       .debug_mode_o         (debug_mode),
@@ -1314,6 +1313,7 @@ NUM_INTERRUPTS
       .m_irq_enable_o(m_irq_enable),
       //.jalmnxti_ctrl_o            ( jalmnxti_ctrl          ), // jump req signal sent by jalmnxti csr
       //.jalmnxti_pc_o              ( jalmnxti_pc            ), // jump target address sent by jalmnxti csr
+      .mtime_i,
 
       // Interrupts Selective Hardware Vectoring
       .minhv_i(minhv),
