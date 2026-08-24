@@ -272,6 +272,12 @@ module ibex_cs_registers #(
   logic [31:0] mtvt_q, mtvt_d;
   logic        mtvt_err;
   logic        mtvt_en;
+  logic [63:0] edf_ts_q, edf_ts_d;
+  logic        edf_ts_err;
+  logic        edf_ts_en;
+  logic [31:0] edf_count_q, edf_count_d;
+  logic        edf_count_err;
+  logic        edf_count_en;
   logic [31:0] mnxti_q, mnxti_d;
   logic        mnxti_en;
   mintstatus_t mintstatus_q, mintstatus_d;
@@ -372,8 +378,11 @@ module ibex_cs_registers #(
   assign mtime_clk = mtime_i[0];
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni) mtime_clk_q <= 1'b0;
-    else         mtime_clk_q <= mtime_clk;
+    if (~rst_ni) begin
+      mtime_clk_q <= 1'b0;
+    end else begin
+      mtime_clk_q <= mtime_clk;
+    end
   end
 
   logic mnxti_pass;
@@ -586,6 +595,14 @@ module ibex_cs_registers #(
 
       CSR_MCLICBASE:    csr_rdata_int = MCLICBASE_ADDR;
 
+      CSR_MTIME_LO: csr_rdata_int = mtime_i[31:0];
+      CSR_MTIME_HI: csr_rdata_int = mtime_i[63:32];
+
+      CSR_EDF_TS_LO: csr_rdata_int = edf_ts_q[31:0];
+      CSR_EDF_TS_HI: csr_rdata_int = edf_ts_q[63:32];
+
+      CSR_EDF_COUNT: csr_rdata_int = edf_count_q;
+
       CSR_MSECCFG: begin
         if (PMPEnable) begin
           csr_rdata_int                       = '0;
@@ -777,6 +794,11 @@ module ibex_cs_registers #(
     mscratchswl_d  = csr_wdata_int;
     mclicbase_d    = {csr_wdata_int[31:12], 12'b0};
 
+    edf_ts_d       = edf_ts_q;
+    edf_ts_en      = 1'b0;
+    edf_count_d    = edf_count_q;
+    edf_count_en   = 1'b0;
+
     mnxti_en       = 1'b0;
     mintstatus_en  = 1'b0;
     mintthresh_en  = 1'b0;
@@ -864,6 +886,11 @@ module ibex_cs_registers #(
         // mtvt
         CSR_MTVT: mtvt_en = 1'b1;
 
+        CSR_EDF_COUNT: begin
+          edf_count_d  = csr_wdata_int;
+          edf_count_en = 1'b1;
+        end
+
         // CLIC registers
         CSR_MNXTI:       mnxti_en       = 1'b1;
         CSR_MINTSATUS:   mintstatus_en  = 1'b1;
@@ -941,6 +968,23 @@ module ibex_cs_registers #(
 
         default:;
       endcase
+    end
+
+    // Dynamic mintstatus.mil increment
+    if (mintstatus_q.mil != 8'h00 &&  mintstatus_q.mil != 8'hFF) begin
+      if (mtime_clk != mtime_clk_q) begin
+        edf_count_en = 1'b1;
+        mintstatus_en = 1'b1;
+        mintstatus_d.mil = mintstatus_q.mil + 8'h1;
+
+        edf_count_d = edf_count_q + 32'h1;
+      end
+    end
+
+    // Fix traling increment after task completion
+    if (mintstatus_q.mil == 8'h00 && edf_count_q != 0) begin
+        edf_count_en = 1'b1;
+        edf_count_d  = 32'h0;
     end
 
     // exception controller gets priority over other writes
@@ -1257,6 +1301,35 @@ module ibex_cs_registers #(
     .rd_data_o (mtvt_q),
     .rd_error_o(mtvt_err)
   );
+
+  // EDF_TS
+  ibex_csr #(
+    .Width     (64),
+    .ShadowCopy(1'b0),
+    .ResetValue('0)
+  ) u_edf_ts_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (edf_ts_d),
+    .wr_en_i   (edf_ts_en),
+    .rd_data_o (edf_ts_q),
+    .rd_error_o(edf_ts_err)
+  );
+
+  // EDF_COUNT
+  ibex_csr #(
+    .Width     (32),
+    .ShadowCopy(1'b0),
+    .ResetValue('0)
+  ) u_edf_count_csr (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .wr_data_i (edf_count_d),
+    .wr_en_i   (edf_count_en),
+    .rd_data_o (edf_count_q),
+    .rd_error_o(edf_count_err)
+  );
+
 
   // DCSR
   localparam dcsr_t DCSR_RESET_VAL = '{
