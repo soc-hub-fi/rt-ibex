@@ -374,6 +374,11 @@ module ibex_cs_registers #(
   logic [2:0]  unused_csr_addr;
 
   logic mtime_clk, mtime_clk_q;
+  logic [63:0] task_blocked_counter;
+
+  // Calculate how long current task has been blocked by preemption
+  // For unblocked tasks value should always be zero
+  assign task_blocked_counter = (edf_ts_q == 64'h0) ? 64'h0 : mtime_i - (edf_ts_q + 64'(edf_count_q));
 
   assign mtime_clk = mtime_i[0];
 
@@ -990,7 +995,7 @@ module ibex_cs_registers #(
       if (mtime_clk != mtime_clk_q) begin
         edf_count_en = 1'b1;
         mintstatus_en = 1'b1;
-        mintstatus_d.mil = mintstatus_q.mil + 8'h1;
+        mintstatus_d.mil = mintstatus_q.mil + 8'h1; // + 8'(task_blocked_counter);
 
         edf_count_d = edf_count_q + 32'h1;
       end
@@ -1128,7 +1133,7 @@ module ibex_cs_registers #(
         end else begin
           // otherwise restore interrupt prio levels
           mcause_d.mpil = mintstatus_q.mil;
-          mintstatus_d.mil = mcause_q.mpil;
+          mintstatus_d.mil = mcause_q.mpil + 8'(task_blocked_counter);
 
           // set mstatus.MPIE/MPP
           mstatus_d.mpie = 1'b1;
