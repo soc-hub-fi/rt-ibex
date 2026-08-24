@@ -602,6 +602,7 @@ module ibex_cs_registers #(
       CSR_EDF_TS_HI: csr_rdata_int = edf_ts_q[63:32];
 
       CSR_EDF_COUNT: csr_rdata_int = edf_count_q;
+      CSR_EDF_CTRL: csr_rdata_int = 32'h0;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
@@ -889,6 +890,20 @@ module ibex_cs_registers #(
         CSR_EDF_COUNT: begin
           edf_count_d  = csr_wdata_int;
           edf_count_en = 1'b1;
+        end
+
+        CSR_EDF_TS_LO: begin
+          edf_ts_en  = 1'b1;
+          edf_ts_d   = {edf_ts_q[63:32], csr_wdata_int};
+        end
+        CSR_EDF_TS_HI: begin
+          edf_ts_en  = 1'b1;
+          edf_ts_d   = {csr_wdata_int, edf_ts_q[31:0]};
+        end
+
+        CSR_EDF_CTRL: begin
+          edf_ts_en  = 1'b1;
+          edf_ts_d   = mtime_i;
         end
 
         // CLIC registers
@@ -1315,6 +1330,7 @@ module ibex_cs_registers #(
     .rd_data_o (edf_ts_q),
     .rd_error_o(edf_ts_err)
   );
+
 
   // EDF_COUNT
   ibex_csr #(

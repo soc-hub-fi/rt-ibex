@@ -532,7 +532,10 @@ package ibex_pkg;
     CSR_MTIME_HI   = 12'h361,
     CSR_EDF_TS_LO  = 12'h362,
     CSR_EDF_TS_HI  = 12'h363,
-    CSR_EDF_COUNT  = 12'h364,
+    //CSR_EDF_PTS_LO = 12'h364,
+    //CSR_EDF_PTS_HI = 12'h365,
+    CSR_EDF_COUNT  = 12'h366,
+    CSR_EDF_CTRL   = 12'h367,
 
     // Physical memory protection
     CSR_PMPCFG0   = 12'h3A0,
