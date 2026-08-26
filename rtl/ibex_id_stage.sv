@@ -636,7 +636,7 @@ NUM_INTERRUPTS
   logic            [NUM_INTERRUPTS-1:16] clic_irqs_q;
   logic                                  irq_nm_q;
   //logic        irq_sec_q;
-  logic            [                7:0] irq_level;
+  //logic            [                7:0] irq_level;
 
   // register all interrupt inputs
   always_ff @(posedge clk_i, negedge rst_ni) begin
@@ -645,13 +645,13 @@ NUM_INTERRUPTS
       clic_irqs_q <= '0;
       irq_nm_q    <= 1'b0;
       //irq_sec_q   <= 1'b0;
-      irq_level   <= '0;
+      //irq_level   <= '0;
     end else begin
       ibex_irqs_q <= ibex_irqs_i;
       clic_irqs_q <= clic_irqs_i;
       irq_nm_q    <= irq_nm_i;
       //irq_sec_q   <= irq_sec_i;
-      irq_level   <= irq_level_i;
+      //irq_level   <= irq_level_i;
     end
   end
 
@@ -694,9 +694,9 @@ NUM_INTERRUPTS
   logic irq_wu_ctrl;
 
   assign max_thresh = mintthresh_i > mintstatus_i.mil ? mintthresh_i : mintstatus_i.mil;
-  assign irq_req_ctrl = (irq_level > max_thresh) &&
+  assign irq_req_ctrl = (irq_level_i > max_thresh) &&
     (|{clic_irqs_i, ibex_irqs_i}) && m_irq_enable_i;
-  assign irq_pending_thresh = irq_pending_i && (irq_level > max_thresh);
+  assign irq_pending_thresh = irq_pending_i && (irq_level_i > max_thresh);
 
   // tied to zero in CLIC mode
   assign mip_o = '0;
@@ -806,7 +806,7 @@ NUM_INTERRUPTS
       .irq_id_ctrl_i        (irq_id_ctrl),
       .irq_id_o             (irq_id_o),
       .irq_ack_o            (irq_ack_o),
-      .irq_level_ctrl_i     (irq_level),
+      .irq_level_ctrl_i     (irq_level_i),
       .trap_addr_mux_o      (trap_addr_mux_o),
       .mintstatus_i         (mintstatus_i),
       // CSR Controller Signals
