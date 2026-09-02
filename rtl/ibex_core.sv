@@ -181,7 +181,6 @@ module ibex_core
     // pcs Support
     output logic pcs_mret_o,
     input  logic pcs_restore_done_i,
-    output logic next_instr_mret_o,
     output logic start_pcs_o,
     input  logic pcs_acive_i,
 

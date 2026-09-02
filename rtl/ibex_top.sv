@@ -230,7 +230,6 @@ module ibex_top
 
   ibex_mubi_t        fetch_enable_buf;
   logic              pcs_restore_done;
-  logic              next_mret;
 
   logic              rf_increment_ptr;
   logic              rf_decrement_ptr;
@@ -434,7 +433,6 @@ module ibex_top
       .pcs_mret_o   (mret_core),
       .pcs_restore_done_i(pcs_restore_done),
       .pcs_acive_i  (pcs_active),
-      .next_instr_mret_o (next_mret),
       .start_pcs_o(/*start_pcs*/),
 
 

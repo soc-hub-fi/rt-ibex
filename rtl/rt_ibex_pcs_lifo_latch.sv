@@ -31,6 +31,7 @@ state_t curr_state, next_state;
 
 logic [MemWidth-1:0] store_data, restore_data;
 logic req, we;
+logic latch_en;
 
 logic [MemWidth-1:0] shift_reg_d [MemDepth];
 logic [MemWidth-1:0] shift_reg_q [MemDepth];

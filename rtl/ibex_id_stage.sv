@@ -156,7 +156,6 @@ module ibex_id_stage #(
     output logic nmi_mode_o,
     input logic [7:0] irq_level_i,
     output logic [7:0] csr_irq_level_o,
-    input logic [63:0] mtime_i,
     //input  logic [31:0]               mie_bypass_i,// MIE CSR (bypass)
     //output logic [31:0]               mip_o,       // MIP CSR
     //input  logic                      m_irq_enable_i,
