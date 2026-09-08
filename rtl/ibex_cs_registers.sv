@@ -10,153 +10,155 @@
 `include "prim_assert.sv"
 
 module ibex_cs_registers #(
-  parameter bit               DbgTriggerEn      = 0,
-  parameter int unsigned      DbgHwBreakNum     = 1,
-  parameter bit               DataIndTiming     = 1'b0,
-  parameter bit               DummyInstructions = 1'b0,
-  parameter bit               ShadowCSR         = 1'b0,
-  parameter bit               ICache            = 1'b0,
-  parameter int unsigned      MHPMCounterNum    = 10,
-  parameter int unsigned      MHPMCounterWidth  = 40,
-  parameter bit               PMPEnable         = 0,
-  parameter int unsigned      PMPGranularity    = 0,
-  parameter int unsigned      PMPNumRegions     = 4,
-  parameter bit               RV32E             = 0,
-  parameter bit               CLIC              = 1,
-  parameter bit               CLIC_SHV          = 1,
-  parameter int unsigned      NUM_INTERRUPTS    = 64,
-  parameter ibex_pkg::rv32m_e RV32M             = ibex_pkg::RV32MFast,
-  parameter ibex_pkg::rv32b_e RV32B             = ibex_pkg::RV32BNone,
-  parameter logic [31:0]      MCLICBASE_ADDR    = 32'h0005_0000
+    parameter bit                      DbgTriggerEn      = 0,
+    parameter int unsigned             DbgHwBreakNum     = 1,
+    parameter bit                      DataIndTiming     = 1'b0,
+    parameter bit                      DummyInstructions = 1'b0,
+    parameter bit                      ShadowCSR         = 1'b0,
+    parameter bit                      ICache            = 1'b0,
+    parameter int unsigned             MHPMCounterNum    = 10,
+    parameter int unsigned             MHPMCounterWidth  = 40,
+    parameter bit                      PMPEnable         = 0,
+    parameter int unsigned             PMPGranularity    = 0,
+    parameter int unsigned             PMPNumRegions     = 4,
+    parameter bit                      RV32E             = 0,
+    parameter bit                      CLIC              = 1,
+    parameter bit                      CLIC_SHV          = 1,
+    parameter int unsigned             NUM_INTERRUPTS    = 64,
+    parameter ibex_pkg::rv32m_e        RV32M             = ibex_pkg::RV32MFast,
+    parameter ibex_pkg::rv32b_e        RV32B             = ibex_pkg::RV32BNone,
+    parameter logic             [31:0] MCLICBASE_ADDR    = 32'h0005_0000
 ) (
-  // Clock and Reset
-  input  logic                 clk_i,
-  input  logic                 rst_ni,
+    // Clock and Reset
+    input logic clk_i,
+    input logic rst_ni,
 
-  // Hart ID
-  input  logic [31:0]          hart_id_i,
+    // Hart ID
+    input logic [31:0] hart_id_i,
 
-  // Privilege mode
-  output ibex_pkg::priv_lvl_e  priv_mode_id_o,
-  output ibex_pkg::priv_lvl_e  priv_mode_lsu_o,
-  output logic                 csr_mstatus_tw_o,
+    // Privilege mode
+    output ibex_pkg::priv_lvl_e priv_mode_id_o,
+    output ibex_pkg::priv_lvl_e priv_mode_lsu_o,
+    output logic                csr_mstatus_tw_o,
 
-  // mtvec
-  output logic [31:0]          csr_mtvec_o,
-  input  logic                 csr_mtvec_init_i,
-  input  logic [31:0]          boot_addr_i,
+    // mtvec
+    output logic [31:0] csr_mtvec_o,
+    input  logic        csr_mtvec_init_i,
+    input  logic [31:0] boot_addr_i,
 
-  // Interface to registers (SRAM like)
-  input  logic                 csr_access_i,
-  input  ibex_pkg::csr_num_e   csr_addr_i,
-  input  logic [31:0]          csr_wdata_i,
-  input  ibex_pkg::csr_op_e    csr_op_i,
-  input                        csr_op_en_i,
-  output logic [31:0]          csr_rdata_o,
+    // Interface to registers (SRAM like)
+    input  logic                      csr_access_i,
+    input  ibex_pkg::csr_num_e        csr_addr_i,
+    input  logic               [31:0] csr_wdata_i,
+    input  ibex_pkg::csr_op_e         csr_op_i,
+    input                             csr_op_en_i,
+    output logic               [31:0] csr_rdata_o,
 
-  // interrupts
-  input  logic                              nmi_mode_i,
-  input  logic [7:0]                        irq_level_i,      // instant pending interrupt level for mnxti csr
-  input  logic                              irq_shv_i,        // instant pending interrupt selective hardware vectoring for mnxti csr
-  input  logic [NUM_INTERRUPTS-1:0]         irq_i,            // instant pending interrupt for mmnxti csr
-  input  logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_i, // instant pending interrupt id for mnxti csr (calculated in id_stage.sv)
-  //output logic                              irq_ack_mnxti_o,
-  output logic                              csr_mstatus_mie_o,
-  input  logic [1:0]                        irq_priv_i,
-  output logic                              irq_pending_o,
-  //output ibex_pkg::irqs_t                   ibex_irqs_o,      // interrupt requests qualified with mie
-  //output logic [NUM_INTERRUPTS-1:4]         clic_irqs_o,      // max 4096 with 0-15 reserved
-  output logic [7:0]      mintthresh_o,
-  output ibex_pkg::mintstatus_t             mintstatus_o,
-  //output logic                              jalmnxti_ctrl_o,
-  //output logic [31:0]                       jalmnxti_pc_o,
-  output logic [31:0]                       csr_mepc_o,
-  output logic [31:0]                       csr_mtval_o,
-  input  logic [7:0]                        csr_irq_level_i,
-  output logic [31:0]                       csr_mtvt_o,
-  output logic [1:0]                        mtvec_mode_o,
-  //input  logic [31:0]                       mtvec_addr_i,
-  //input  logic [31:0]                       mtvt_addr_i,
-  input  logic                              csr_mtvt_init_i,
-  output logic [31:0]                       mie_bypass_o,
-  input  logic [31:0]                       mip_i,
-  output logic                              m_irq_enable_o,
-  input  logic                              minhv_i,
-  output ibex_pkg::priv_lvl_e               priv_lvl_o,
-  output logic [31:0]                       csr_mcause_o,
-  input  logic [63:0]                       mtime_i,
+    // interrupts
+    input logic nmi_mode_i,
+    input logic [7:0] irq_level_i,  // instant pending interrupt level for mnxti csr
+    input logic irq_shv_i,  // instant pending interrupt selective hardware vectoring for mnxti csr
+    input logic [NUM_INTERRUPTS-1:0] irq_i,  // instant pending interrupt for mmnxti csr
+    input logic [$clog2(
+NUM_INTERRUPTS
+)-1:0] irq_id_instant_i,  // instant pending interrupt id for mnxti csr (calculated in id_stage.sv)
+    //output logic                              irq_ack_mnxti_o,
+    output logic csr_mstatus_mie_o,
+    input logic [1:0] irq_priv_i,
+    output logic irq_pending_o,
+    //output ibex_pkg::irqs_t                   ibex_irqs_o,      // interrupt requests qualified with mie
+    //output logic [NUM_INTERRUPTS-1:4]         clic_irqs_o,      // max 4096 with 0-15 reserved
+    output logic [7:0] mintthresh_o,
+    output ibex_pkg::mintstatus_t mintstatus_o,
+    //output logic                              jalmnxti_ctrl_o,
+    //output logic [31:0]                       jalmnxti_pc_o,
+    output logic [31:0] csr_mepc_o,
+    output logic [31:0] csr_mtval_o,
+    input logic [7:0] csr_irq_level_i,
+    output logic [31:0] csr_mtvt_o,
+    output logic [1:0] mtvec_mode_o,
+    //input  logic [31:0]                       mtvec_addr_i,
+    //input  logic [31:0]                       mtvt_addr_i,
+    input logic csr_mtvt_init_i,
+    output logic [31:0] mie_bypass_o,
+    input logic [31:0] mip_i,
+    output logic m_irq_enable_o,
+    input logic minhv_i,
+    output ibex_pkg::priv_lvl_e priv_lvl_o,
+    output logic [31:0] csr_mcause_o,
+    input logic [63:0] mtime_i,
 
-  // PMP
-  output ibex_pkg::pmp_cfg_t     csr_pmp_cfg_o  [PMPNumRegions],
-  output logic [33:0]            csr_pmp_addr_o [PMPNumRegions],
-  output ibex_pkg::pmp_mseccfg_t csr_pmp_mseccfg_o,
+    // PMP
+    output ibex_pkg::pmp_cfg_t            csr_pmp_cfg_o    [PMPNumRegions],
+    output logic                   [33:0] csr_pmp_addr_o   [PMPNumRegions],
+    output ibex_pkg::pmp_mseccfg_t        csr_pmp_mseccfg_o,
 
-  // debug
-  input  logic                 debug_mode_i,
-  input  logic                 debug_mode_entering_i,
-  input  ibex_pkg::dbg_cause_e debug_cause_i,
-  input  logic                 debug_csr_save_i,
-  output logic [31:0]          csr_depc_o,
-  output logic                 debug_single_step_o,
-  output logic                 debug_ebreakm_o,
-  output logic                 debug_ebreaku_o,
-  output logic                 trigger_match_o,
+    // debug
+    input  logic                        debug_mode_i,
+    input  logic                        debug_mode_entering_i,
+    input  ibex_pkg::dbg_cause_e        debug_cause_i,
+    input  logic                        debug_csr_save_i,
+    output logic                 [31:0] csr_depc_o,
+    output logic                        debug_single_step_o,
+    output logic                        debug_ebreakm_o,
+    output logic                        debug_ebreaku_o,
+    output logic                        trigger_match_o,
 
-  input  logic [31:0]          pc_if_i,
-  input  logic [31:0]          pc_id_i,
-  input  logic [31:0]          pc_wb_i,
+    input logic [31:0] pc_if_i,
+    input logic [31:0] pc_id_i,
+    input logic [31:0] pc_wb_i,
 
-  // CPU control and status bits
-  output logic                 data_ind_timing_o,
-  output logic                 dummy_instr_en_o,
-  output logic [2:0]           dummy_instr_mask_o,
-  output logic                 dummy_instr_seed_en_o,
-  output logic [31:0]          dummy_instr_seed_o,
-  output logic                 icache_enable_o,
-  output logic                 csr_shadow_err_o,
-  input  logic                 ic_scr_key_valid_i,
+    // CPU control and status bits
+    output logic        data_ind_timing_o,
+    output logic        dummy_instr_en_o,
+    output logic [ 2:0] dummy_instr_mask_o,
+    output logic        dummy_instr_seed_en_o,
+    output logic [31:0] dummy_instr_seed_o,
+    output logic        icache_enable_o,
+    output logic        csr_shadow_err_o,
+    input  logic        ic_scr_key_valid_i,
 
-  // Exception save/restore
-  input  logic                 csr_save_if_i,
-  input  logic                 csr_save_id_i,
-  input  logic                 csr_save_wb_i,
-  input  logic                 csr_restore_mret_i,
-  input  logic                 csr_restore_dret_i,
-  input  logic                 csr_save_cause_i,
-  input  ibex_pkg::exc_cause_t csr_mcause_i,
-  input  logic [31:0]          csr_mtval_i,
-  output logic                 illegal_csr_insn_o,     // access to non-existent CSR,
-                                                        // with wrong priviledge level, or
-                                                        // missing write permissions
-  output logic                 double_fault_seen_o,
+    // Exception save/restore
+    input  logic                        csr_save_if_i,
+    input  logic                        csr_save_id_i,
+    input  logic                        csr_save_wb_i,
+    input  logic                        csr_restore_mret_i,
+    input  logic                        csr_restore_dret_i,
+    input  logic                        csr_save_cause_i,
+    input  ibex_pkg::exc_cause_t        csr_mcause_i,
+    input  logic                 [31:0] csr_mtval_i,
+    output logic                        illegal_csr_insn_o,  // access to non-existent CSR,
+                                                             // with wrong priviledge level, or
+                                                             // missing write permissions
+    output logic                        double_fault_seen_o,
 
-  // CLIC signals
+    // CLIC signals
 
-  // Performance Counters
-  input  logic                 instr_ret_i,                 // instr retired in ID/EX stage
-  input  logic                 instr_ret_compressed_i,      // compressed instr retired
-  input  logic                 instr_ret_spec_i,            // speculative instr_ret_i
-  input  logic                 instr_ret_compressed_spec_i, // speculative instr_ret_compressed_i
-  input  logic                 iside_wait_i,                // core waiting for the iside
-  input  logic                 jump_i,                      // jump instr seen (j, jr, jal, jalr)
-  input  logic                 branch_i,                    // branch instr seen (bf, bnf)
-  input  logic                 branch_taken_i,              // branch was taken
-  input  logic                 mem_load_i,                  // load from memory in this cycle
-  input  logic                 mem_store_i,                 // store to memory in this cycle
-  input  logic                 dside_wait_i,                // core waiting for the dside
-  input  logic                 mul_wait_i,                  // core waiting for multiply
-  input  logic                 div_wait_i,                  // core waiting for divide
+    // Performance Counters
+    input logic instr_ret_i,                  // instr retired in ID/EX stage
+    input logic instr_ret_compressed_i,       // compressed instr retired
+    input logic instr_ret_spec_i,             // speculative instr_ret_i
+    input logic instr_ret_compressed_spec_i,  // speculative instr_ret_compressed_i
+    input logic iside_wait_i,                 // core waiting for the iside
+    input logic jump_i,                       // jump instr seen (j, jr, jal, jalr)
+    input logic branch_i,                     // branch instr seen (bf, bnf)
+    input logic branch_taken_i,               // branch was taken
+    input logic mem_load_i,                   // load from memory in this cycle
+    input logic mem_store_i,                  // store to memory in this cycle
+    input logic dside_wait_i,                 // core waiting for the dside
+    input logic mul_wait_i,                   // core waiting for multiply
+    input logic div_wait_i,                   // core waiting for divide
 
-  // From/To LSU/HW_STACKING_UNIT
-  input  logic                 csr_fast_lsu_i,
-  input  logic                 stacking_csr_select_i,
-  input  logic [31:0]          lsu_rdata_i,
-  input  logic                 lsu_rdata_valid_i ,
+    // From/To LSU/HW_STACKING_UNIT
+    input logic        csr_fast_lsu_i,
+    input logic        stacking_csr_select_i,
+    input logic [31:0] lsu_rdata_i,
+    input logic        lsu_rdata_valid_i,
 
 
-  input  logic [31:0]          rf_mepc_i,
-  input  logic [31:0]          rf_mcause_i,
-  input  logic                 csr_fast_rf_i
+    input logic [31:0] rf_mepc_i,
+    input logic [31:0] rf_mcause_i,
+    input logic        csr_fast_rf_i
 
 );
 
@@ -169,7 +171,9 @@ module ibex_cs_registers #(
     logic value = 1'b0;
 
     if (pmp_cfg.lock) begin
-      unique case ({pmp_cfg.read, pmp_cfg.write, pmp_cfg.exec})
+      unique case ({
+        pmp_cfg.read, pmp_cfg.write, pmp_cfg.exec
+      })
         3'b001, 3'b010, 3'b011, 3'b101: value = 1'b1;
         default: value = 1'b0;
       endcase
@@ -179,27 +183,26 @@ module ibex_cs_registers #(
   endfunction
 
   // All bitmanip configs enable non-ratified sub-extensions
-  localparam int unsigned RV32BExtra   = (RV32B != RV32BNone) ? 1 : 0;
+  localparam int unsigned RV32BExtra = (RV32B != RV32BNone) ? 1 : 0;
   localparam int unsigned RV32MEnabled = (RV32M == RV32MNone) ? 0 : 1;
   localparam int unsigned PMPAddrWidth = (PMPGranularity > 0) ? 33 - PMPGranularity : 32;
 
   // misa
-  localparam logic [31:0] MISA_VALUE =
-      (0                 <<  0)  // A - Atomic Instructions extension
-    | (0                 <<  1)  // B - Bit-Manipulation extension
-    | (1                 <<  2)  // C - Compressed extension
-    | (0                 <<  3)  // D - Double precision floating-point extension
-    | (32'(RV32E)        <<  4)  // E - RV32E base ISA
-    | (0                 <<  5)  // F - Single precision floating-point extension
-    | (32'(!RV32E)       <<  8)  // I - RV32I/64I/128I base ISA
-    | (RV32MEnabled      << 12)  // M - Integer Multiply/Divide extension
-    | (0                 << 13)  // N - User level interrupts supported
-    | (0                 << 18)  // S - Supervisor mode implemented
-    | (1                 << 20)  // U - User mode implemented
-    | (RV32BExtra        << 23)  // X - Non-standard extensions present
-    | (32'(CSR_MISA_MXL) << 30); // M-XLEN
+  localparam logic [31:0] MISA_VALUE = (0 << 0)  // A - Atomic Instructions extension
+  | (0 << 1)  // B - Bit-Manipulation extension
+  | (1 << 2)  // C - Compressed extension
+  | (0 << 3)  // D - Double precision floating-point extension
+  | (32'(RV32E) << 4)  // E - RV32E base ISA
+  | (0 << 5)  // F - Single precision floating-point extension
+  | (32'(!RV32E) << 8)  // I - RV32I/64I/128I base ISA
+  | (RV32MEnabled << 12)  // M - Integer Multiply/Divide extension
+  | (0 << 13)  // N - User level interrupts supported
+  | (0 << 18)  // S - Supervisor mode implemented
+  | (1 << 20)  // U - User mode implemented
+  | (RV32BExtra << 23)  // X - Non-standard extensions present
+  | (32'(CSR_MISA_MXL) << 30);  // M-XLEN
 
-  localparam logic [31:0] MTVEC_MODE     = CLIC ? 32'b11 : 32'b01;
+  localparam logic [31:0] MTVEC_MODE = CLIC ? 32'b11 : 32'b01;
 
   // Interrupt mask
   localparam IRQ_MASK = {32{1'b1}};
@@ -218,21 +221,21 @@ module ibex_cs_registers #(
   } status_stk_t;
 
   typedef struct packed {
-      x_debug_ver_e xdebugver;
-      logic [11:0]  zero2;
-      logic         ebreakm;
-      logic         zero1;
-      logic         ebreaks;
-      logic         ebreaku;
-      logic         stepie;
-      logic         stopcount;
-      logic         stoptime;
-      dbg_cause_e   cause;
-      logic         zero0;
-      logic         mprven;
-      logic         nmip;
-      logic         step;
-      priv_lvl_e    prv;
+    x_debug_ver_e xdebugver;
+    logic [11:0]  zero2;
+    logic         ebreakm;
+    logic         zero1;
+    logic         ebreaks;
+    logic         ebreaku;
+    logic         stepie;
+    logic         stopcount;
+    logic         stoptime;
+    dbg_cause_e   cause;
+    logic         zero0;
+    logic         mprven;
+    logic         nmip;
+    logic         step;
+    priv_lvl_e    prv;
   } dcsr_t;
 
   // Partial CPU control and status register fields
@@ -240,103 +243,103 @@ module ibex_cs_registers #(
   // because it is sampled from the top-level every cycle whilst the other fields only change
   // occasionally.
   typedef struct packed {
-    logic        double_fault_seen;
-    logic        sync_exc_seen;
-    logic [2:0]  dummy_instr_mask;
-    logic        dummy_instr_en;
-    logic        data_ind_timing;
-    logic        icache_enable;
+    logic       double_fault_seen;
+    logic       sync_exc_seen;
+    logic [2:0] dummy_instr_mask;
+    logic       dummy_instr_en;
+    logic       data_ind_timing;
+    logic       icache_enable;
   } cpu_ctrl_sts_part_t;
 
   // Interrupt and exception control signals
   logic [31:0] exception_pc;
 
   // CSRs
-  priv_lvl_e   priv_lvl_q, priv_lvl_d;
-  status_t     mstatus_q, mstatus_d;
-  logic        mstatus_err;
-  logic        mstatus_en;
-  irqs_t       mie_q, mie_d;
+  priv_lvl_e priv_lvl_q, priv_lvl_d;
+  status_t mstatus_q, mstatus_d;
+  logic mstatus_err;
+  logic mstatus_en;
+  irqs_t mie_q, mie_d;
   logic        mie_en;
   logic [31:0] mscratch_q;
   logic        mscratch_en;
   logic [31:0] mepc_q, mepc_d;
-  logic        mepc_en;
-  exc_cause_t  mcause_q, mcause_d;
-  logic        mcause_en;
+  logic mepc_en;
+  exc_cause_t mcause_q, mcause_d;
+  logic mcause_en;
   logic [31:0] mtval_q, mtval_d;
-  logic        mtval_en;
+  logic mtval_en;
   logic [31:0] mtvec_q, mtvec_d;
-  logic        mtvec_err;
-  logic        mtvec_en;
+  logic mtvec_err;
+  logic mtvec_en;
   logic [31:0] mtvt_q, mtvt_d;
-  logic        mtvt_err;
-  logic        mtvt_en;
+  logic mtvt_err;
+  logic mtvt_en;
   logic [63:0] edf_ts_q, edf_ts_d;
-  logic        edf_ts_err;
-  logic        edf_ts_en;
+  logic edf_ts_err;
+  logic edf_ts_en;
   logic [31:0] edf_count_q, edf_count_d;
-  logic        edf_count_err;
-  logic        edf_count_en;
+  logic edf_count_err;
+  logic edf_count_en;
   logic [31:0] mnxti_q, mnxti_d;
-  logic        mnxti_en;
+  logic mnxti_en;
   mintstatus_t mintstatus_q, mintstatus_d;
-  logic        mintstatus_en;
-  logic  [7:0] mintthresh_q, mintthresh_d;
-  logic        mintthresh_en;
+  logic mintstatus_en;
+  logic [7:0] mintthresh_q, mintthresh_d;
+  logic mintthresh_en;
   logic [31:0] mscratchsw_q, mscratchsw_d;
-  logic        mscratchsw_en;
+  logic mscratchsw_en;
   logic [31:0] mscratchswl_q, mscratchswl_d;
-  logic        mscratchswl_en;
+  logic mscratchswl_en;
   logic [31:0] mclicbase_q, mclicbase_d;
-  logic        mclicbase_en;
-  logic        minhv_n, minhv_q;
-  irqs_t       mip;
-  dcsr_t       dcsr_q, dcsr_d;
-  logic        dcsr_en;
+  logic mclicbase_en;
+  logic minhv_n, minhv_q;
+  irqs_t mip;
+  dcsr_t dcsr_q, dcsr_d;
+  logic dcsr_en;
   logic [31:0] depc_q, depc_d;
   logic        depc_en;
   logic [31:0] dscratch0_q;
   logic [31:0] dscratch1_q;
-  logic        dscratch0_en, dscratch1_en;
+  logic dscratch0_en, dscratch1_en;
 
   logic [31:0] csr_mie_wdata;
   logic        csr_mie_we;
 
   // CLIC signals
-  logic [        NUM_INTERRUPTS-1:0] irq_q, irq_d;
-  logic                        [7:0] irq_level_q, irq_level_d;
-  logic                              irq_shv_q, irq_shv_d;
+  logic [NUM_INTERRUPTS-1:0] irq_q, irq_d;
+  logic [7:0] irq_level_q, irq_level_d;
+  logic irq_shv_q, irq_shv_d;
   logic [$clog2(NUM_INTERRUPTS)-1:0] irq_id_instant_q, irq_id_instant_d;
 
   // CSRs for recoverable NMIs
   // NOTE: these CSRS are nonstandard, see https://github.com/riscv/riscv-isa-manual/issues/261
   status_stk_t mstack_q, mstack_d;
-  logic        mstack_en;
+  logic mstack_en;
   logic [31:0] mstack_epc_q, mstack_epc_d;
-  exc_cause_t  mstack_cause_q, mstack_cause_d;
+  exc_cause_t mstack_cause_q, mstack_cause_d;
 
   // PMP Signals
-  logic [31:0]                 pmp_addr_rdata  [PMP_MAX_REGIONS];
-  logic [PMP_CFG_W-1:0]        pmp_cfg_rdata   [PMP_MAX_REGIONS];
-  logic                        pmp_csr_err;
-  pmp_mseccfg_t                pmp_mseccfg;
+  logic         [         31:0] pmp_addr_rdata[PMP_MAX_REGIONS];
+  logic         [PMP_CFG_W-1:0] pmp_cfg_rdata [PMP_MAX_REGIONS];
+  logic                         pmp_csr_err;
+  pmp_mseccfg_t                 pmp_mseccfg;
 
   // Hardware performance monitor signals
-  logic [31:0]                 mcountinhibit;
+  logic         [         31:0] mcountinhibit;
   // Only have mcountinhibit flops for counters that actually exist
   logic [MHPMCounterNum+3-1:0] mcountinhibit_d, mcountinhibit_q;
-  logic                        mcountinhibit_we;
+  logic        mcountinhibit_we;
 
   // mhpmcounter flops are elaborated below providing only the precise number that is required based
   // on MHPMCounterNum/MHPMCounterWidth. This signal connects to the Q output of these flops
   // where they exist and is otherwise 0.
-  logic [63:0] mhpmcounter [32];
+  logic [63:0] mhpmcounter               [32];
   logic [31:0] mhpmcounter_we;
   logic [31:0] mhpmcounterh_we;
   logic [31:0] mhpmcounter_incr;
-  logic [31:0] mhpmevent [32];
-  logic  [4:0] mhpmcounter_idx;
+  logic [31:0] mhpmevent                 [32];
+  logic [ 4:0] mhpmcounter_idx;
   logic        unused_mhpmcounter_we_1;
   logic        unused_mhpmcounterh_we_1;
   logic        unused_mhpmcounter_incr_1;
@@ -351,11 +354,11 @@ module ibex_cs_registers #(
   // CPU control bits
   cpu_ctrl_sts_part_t cpuctrlsts_part_q, cpuctrlsts_part_d;
   cpu_ctrl_sts_part_t cpuctrlsts_part_wdata_raw, cpuctrlsts_part_wdata;
-  logic               cpuctrlsts_part_we;
-  logic               cpuctrlsts_part_err;
+  logic        cpuctrlsts_part_we;
+  logic        cpuctrlsts_part_err;
 
-  logic cpuctrlsts_ic_scr_key_valid_q;
-  logic cpuctrlsts_ic_scr_key_err;
+  logic        cpuctrlsts_ic_scr_key_valid_q;
+  logic        cpuctrlsts_ic_scr_key_err;
 
   // CSR update logic
   logic [31:0] csr_wdata_int;
@@ -370,8 +373,8 @@ module ibex_cs_registers #(
   logic        illegal_csr_dbg;
   logic        illegal_csr_write;
 
-  logic [7:0]  unused_boot_addr;
-  logic [2:0]  unused_csr_addr;
+  logic [ 7:0] unused_boot_addr;
+  logic [ 2:0] unused_csr_addr;
 
   logic mtime_clk, mtime_clk_q;
   logic [63:0] task_blocked_counter;
@@ -397,8 +400,8 @@ module ibex_cs_registers #(
 
   assign unused_boot_addr = boot_addr_i[7:0];
 
-  assign mtvec_mode_o = MTVEC_MODE[1:0]; // TODO: add support for vectored and CLIC mtvec mode
-  assign csr_mtvt_o   = mtvt_q;
+  assign mtvec_mode_o = MTVEC_MODE[1:0];  // TODO: add support for vectored and CLIC mtvec mode
+  assign csr_mtvt_o = mtvt_q;
   assign mintstatus_o = mintstatus_q;
 
   /////////////
@@ -406,27 +409,27 @@ module ibex_cs_registers #(
   /////////////
 
   logic [$bits(csr_num_e)-1:0] csr_addr;
-  assign csr_addr           = {csr_addr_i};
-  assign unused_csr_addr    = csr_addr[7:5];
-  assign mhpmcounter_idx    = csr_addr[4:0];
+  assign csr_addr = {csr_addr_i};
+  assign unused_csr_addr = csr_addr[7:5];
+  assign mhpmcounter_idx = csr_addr[4:0];
 
-  assign illegal_csr_dbg    = dbg_csr & ~debug_mode_i;
-  assign illegal_csr_priv   = (csr_addr[9:8] > {priv_lvl_q});
-  assign illegal_csr_write  = (csr_addr[11:10] == 2'b11) && csr_wr;
+  assign illegal_csr_dbg = dbg_csr & ~debug_mode_i;
+  assign illegal_csr_priv = (csr_addr[9:8] > {priv_lvl_q});
+  assign illegal_csr_write = (csr_addr[11:10] == 2'b11) && csr_wr;
   assign illegal_csr_insn_o = csr_access_i & (illegal_csr | illegal_csr_write | illegal_csr_priv |
                                               illegal_csr_dbg);
 
   // mip CSR is purely combinational - must be able to re-enable the clock upon WFI
   assign mip.irq_software = irq_i[3];
-  assign mip.irq_timer    = irq_i[7];
+  assign mip.irq_timer = irq_i[7];
   assign mip.irq_external = irq_i[11];
   //assign mip.irq_fast     = irq_i[30:16];
 
   assign minhv_n = mcause_d.minhv;
   assign minhv_q = mcause_q.minhv;
 
-  assign irq_d       = irq_i;
-  assign irq_shv_d   = irq_shv_i;
+  assign irq_d = irq_i;
+  assign irq_shv_d = irq_shv_i;
   assign irq_level_d = irq_level_i;
 
   assign m_irq_enable_o = mstatus_q.mie && !(dcsr_q.step && !dcsr_q.stepie);
@@ -434,23 +437,23 @@ module ibex_cs_registers #(
   assign mintthresh_o = mintthresh_q;
 
   // Only support machine mode
-  assign priv_lvl_o   = PRIV_LVL_M;
+  assign priv_lvl_o = PRIV_LVL_M;
   assign irq_id_instant_d = irq_id_instant_i;
 
-  assign csr_mcause_o = {mcause_q.irq,
-                         mcause_q.minhv,
-                         mcause_q.mpp,
-                         mcause_q.mpie,
-                         3'b0,
-                         mcause_q.mpil,
-                         4'b0,
-                         mcause_q.cause
-                        };
+  assign csr_mcause_o = {
+    mcause_q.irq,
+    mcause_q.minhv,
+    mcause_q.mpp,
+    mcause_q.mpie,
+    3'b0,
+    mcause_q.mpil,
+    4'b0,
+    mcause_q.cause
+  };
 
 
   // MIE CSR operation logic
-  always_comb
-  begin
+  always_comb begin
     csr_mie_wdata = csr_wdata_i;
     csr_mie_we    = 1'b1;
 
@@ -515,13 +518,12 @@ module ibex_cs_registers #(
 
       // interrupt enable
       CSR_MIE: begin
-        if (CLIC)
-          csr_rdata_int = '0;
+        if (CLIC) csr_rdata_int = '0;
         else begin
-          csr_rdata_int                                     = '0;
-          csr_rdata_int[CSR_MSIX_BIT]                       = mie_q.irq_software;
-          csr_rdata_int[CSR_MTIX_BIT]                       = mie_q.irq_timer;
-          csr_rdata_int[CSR_MEIX_BIT]                       = mie_q.irq_external;
+          csr_rdata_int               = '0;
+          csr_rdata_int[CSR_MSIX_BIT] = mie_q.irq_software;
+          csr_rdata_int[CSR_MTIX_BIT] = mie_q.irq_timer;
+          csr_rdata_int[CSR_MEIX_BIT] = mie_q.irq_external;
           //csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mie_q.irq_fast;
         end
       end
@@ -542,33 +544,33 @@ module ibex_cs_registers #(
 
       // mcause: exception cause
       CSR_MCAUSE:
-        if (CLIC) begin
-          csr_rdata_int = { mcause_q.irq,
-                            mcause_q.minhv,
-                            mstatus_q.mpp[1:0],
-                            mstatus_q.mpie,
-                            3'h0,
-                            mcause_q.mpil[7:0],
-                            4'h0,
-                            mcause_q.cause[11:0]};
-        end else
-          $fatal("Non-CLIC mode currently not supported on this implementation.");
-          //csr_rdata_int = {mcause_q.irq_ext | mcause_q.irq_int,
-          //                         mcause_q.irq_int ? {26{1'b1}} : 26'b0,
-          //                         mcause_q.lower_cause[4:0]};
+      if (CLIC) begin
+        csr_rdata_int = {
+          mcause_q.irq,
+          mcause_q.minhv,
+          mstatus_q.mpp[1:0],
+          mstatus_q.mpie,
+          3'h0,
+          mcause_q.mpil[7:0],
+          4'h0,
+          mcause_q.cause[11:0]
+        };
+      end else $fatal("Non-CLIC mode currently not supported on this implementation.");
+      //csr_rdata_int = {mcause_q.irq_ext | mcause_q.irq_int,
+      //                         mcause_q.irq_int ? {26{1'b1}} : 26'b0,
+      //                         mcause_q.lower_cause[4:0]};
 
       // mtval: trap value
       CSR_MTVAL: csr_rdata_int = mtval_q;
 
       // mip: interrupt pending
       CSR_MIP: begin
-        if (CLIC)
-          csr_rdata_int = '0;
+        if (CLIC) csr_rdata_int = '0;
         else begin
-          csr_rdata_int                                     = '0;
-          csr_rdata_int[CSR_MSIX_BIT]                       = mip.irq_software;
-          csr_rdata_int[CSR_MTIX_BIT]                       = mip.irq_timer;
-          csr_rdata_int[CSR_MEIX_BIT]                       = mip.irq_external;
+          csr_rdata_int               = '0;
+          csr_rdata_int[CSR_MSIX_BIT] = mip.irq_software;
+          csr_rdata_int[CSR_MTIX_BIT] = mip.irq_timer;
+          csr_rdata_int[CSR_MEIX_BIT] = mip.irq_external;
           //csr_rdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW] = mip.irq_fast;
         end
       end
@@ -577,28 +579,28 @@ module ibex_cs_registers #(
       CSR_MNXTI: begin
         if (mnxti_pass) begin
           csr_rdata_int[31:8] = mtvt_q[31:8];
-          csr_rdata_int[ 7:2] = 6'(irq_id_instant_q);
-          csr_rdata_int[ 1:0] = '0; // XLEN is fixed to 32, so XLEN/8 = 4
+          csr_rdata_int[7:2]  = 6'(irq_id_instant_q);
+          csr_rdata_int[1:0]  = '0;  // XLEN is fixed to 32, so XLEN/8 = 4
         end else begin
           // to check if irq_q is onehot signal
-          `ifndef VERILATOR
-            assert final ($onehot0(irq_q)) else
-            $fatal(1, "[rt-ibex] More than two bit set in irq_i (one-hot)");
-          `endif
+`ifndef VERILATOR
+          assert final ($onehot0(irq_q))
+          else $fatal(1, "[rt-ibex] More than two bit set in irq_i (one-hot)");
+`endif
           csr_rdata_int = '0;
 
         end
       end
 
-      CSR_MINTSATUS:    csr_rdata_int = mintstatus_q;
+      CSR_MINTSATUS: csr_rdata_int = mintstatus_q;
 
-      CSR_MINTTHRESH:   csr_rdata_int = 32'(mintthresh_q);
+      CSR_MINTTHRESH: csr_rdata_int = 32'(mintthresh_q);
 
-      CSR_MSCRATCHSW:   csr_rdata_int = mscratchsw_q;
+      CSR_MSCRATCHSW: csr_rdata_int = mscratchsw_q;
 
-      CSR_MSCRATCHSWL:  csr_rdata_int = mscratchswl_q;
+      CSR_MSCRATCHSWL: csr_rdata_int = mscratchswl_q;
 
-      CSR_MCLICBASE:    csr_rdata_int = MCLICBASE_ADDR;
+      CSR_MCLICBASE: csr_rdata_int = MCLICBASE_ADDR;
 
       CSR_MTIME_LO: csr_rdata_int = mtime_i[31:0];
       CSR_MTIME_HI: csr_rdata_int = mtime_i[63:32];
@@ -607,7 +609,7 @@ module ibex_cs_registers #(
       CSR_EDF_TS_HI: csr_rdata_int = edf_ts_q[63:32];
 
       CSR_EDF_COUNT: csr_rdata_int = edf_count_q;
-      CSR_EDF_CTRL: csr_rdata_int = 32'h0;
+      CSR_EDF_CTRL:  csr_rdata_int = 32'h0;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
@@ -629,24 +631,24 @@ module ibex_cs_registers #(
       end
 
       // PMP registers
-      CSR_PMPCFG0:   csr_rdata_int = {pmp_cfg_rdata[3],  pmp_cfg_rdata[2],
-                                      pmp_cfg_rdata[1],  pmp_cfg_rdata[0]};
-      CSR_PMPCFG1:   csr_rdata_int = {pmp_cfg_rdata[7],  pmp_cfg_rdata[6],
-                                      pmp_cfg_rdata[5],  pmp_cfg_rdata[4]};
-      CSR_PMPCFG2:   csr_rdata_int = {pmp_cfg_rdata[11], pmp_cfg_rdata[10],
-                                      pmp_cfg_rdata[9],  pmp_cfg_rdata[8]};
-      CSR_PMPCFG3:   csr_rdata_int = {pmp_cfg_rdata[15], pmp_cfg_rdata[14],
-                                      pmp_cfg_rdata[13], pmp_cfg_rdata[12]};
-      CSR_PMPADDR0:  csr_rdata_int = pmp_addr_rdata[0];
-      CSR_PMPADDR1:  csr_rdata_int = pmp_addr_rdata[1];
-      CSR_PMPADDR2:  csr_rdata_int = pmp_addr_rdata[2];
-      CSR_PMPADDR3:  csr_rdata_int = pmp_addr_rdata[3];
-      CSR_PMPADDR4:  csr_rdata_int = pmp_addr_rdata[4];
-      CSR_PMPADDR5:  csr_rdata_int = pmp_addr_rdata[5];
-      CSR_PMPADDR6:  csr_rdata_int = pmp_addr_rdata[6];
-      CSR_PMPADDR7:  csr_rdata_int = pmp_addr_rdata[7];
-      CSR_PMPADDR8:  csr_rdata_int = pmp_addr_rdata[8];
-      CSR_PMPADDR9:  csr_rdata_int = pmp_addr_rdata[9];
+      CSR_PMPCFG0:
+      csr_rdata_int = {pmp_cfg_rdata[3], pmp_cfg_rdata[2], pmp_cfg_rdata[1], pmp_cfg_rdata[0]};
+      CSR_PMPCFG1:
+      csr_rdata_int = {pmp_cfg_rdata[7], pmp_cfg_rdata[6], pmp_cfg_rdata[5], pmp_cfg_rdata[4]};
+      CSR_PMPCFG2:
+      csr_rdata_int = {pmp_cfg_rdata[11], pmp_cfg_rdata[10], pmp_cfg_rdata[9], pmp_cfg_rdata[8]};
+      CSR_PMPCFG3:
+      csr_rdata_int = {pmp_cfg_rdata[15], pmp_cfg_rdata[14], pmp_cfg_rdata[13], pmp_cfg_rdata[12]};
+      CSR_PMPADDR0: csr_rdata_int = pmp_addr_rdata[0];
+      CSR_PMPADDR1: csr_rdata_int = pmp_addr_rdata[1];
+      CSR_PMPADDR2: csr_rdata_int = pmp_addr_rdata[2];
+      CSR_PMPADDR3: csr_rdata_int = pmp_addr_rdata[3];
+      CSR_PMPADDR4: csr_rdata_int = pmp_addr_rdata[4];
+      CSR_PMPADDR5: csr_rdata_int = pmp_addr_rdata[5];
+      CSR_PMPADDR6: csr_rdata_int = pmp_addr_rdata[6];
+      CSR_PMPADDR7: csr_rdata_int = pmp_addr_rdata[7];
+      CSR_PMPADDR8: csr_rdata_int = pmp_addr_rdata[8];
+      CSR_PMPADDR9: csr_rdata_int = pmp_addr_rdata[9];
       CSR_PMPADDR10: csr_rdata_int = pmp_addr_rdata[10];
       CSR_PMPADDR11: csr_rdata_int = pmp_addr_rdata[11];
       CSR_PMPADDR12: csr_rdata_int = pmp_addr_rdata[12];
@@ -742,9 +744,11 @@ module ibex_cs_registers #(
 
       // Custom CSR for controlling CPU features and reporting CPU status
       CSR_CPUCTRLSTS: begin
-        csr_rdata_int = {{32 - $bits(cpu_ctrl_sts_part_t) - 1 {1'b0}},
-                         cpuctrlsts_ic_scr_key_valid_q,
-                         cpuctrlsts_part_q};
+        csr_rdata_int = {
+          {32 - $bits(cpu_ctrl_sts_part_t) - 1{1'b0}},
+          cpuctrlsts_ic_scr_key_valid_q,
+          cpuctrlsts_part_q
+        };
       end
 
       // Custom CSR for LFSR re-seeding (cannot be read)
@@ -772,19 +776,19 @@ module ibex_cs_registers #(
   always_comb begin
     exception_pc = pc_id_i;
 
-    priv_lvl_d   = priv_lvl_q;
-    mstatus_en   = 1'b0;
-    mstatus_d    = mstatus_q;
-    mie_en       = 1'b0;
-    mscratch_en  = 1'b0;
-    mepc_en      = 1'b0;
-    mepc_d       = {csr_wdata_int[31:1], 1'b0};
-    mcause_en    = 1'b0;
-    mcause_d     = mcause_q;
-    mtval_en     = 1'b0;
-    mtval_d      = csr_wdata_int;
-    mtvec_en     = csr_mtvec_init_i;
-    mtvt_en      = 1'b0;
+    priv_lvl_d = priv_lvl_q;
+    mstatus_en = 1'b0;
+    mstatus_d = mstatus_q;
+    mie_en = 1'b0;
+    mscratch_en = 1'b0;
+    mepc_en = 1'b0;
+    mepc_d = {csr_wdata_int[31:1], 1'b0};
+    mcause_en = 1'b0;
+    mcause_d = mcause_q;
+    mtval_en = 1'b0;
+    mtval_d = csr_wdata_int;
+    mtvec_en = csr_mtvec_init_i;
+    mtvt_en = 1'b0;
     // mtvec.MODE set to ###CLIC###
     // TODO: make runtime-configurable
     // mtvec.BASE must be 256-byte aligned
@@ -792,45 +796,45 @@ module ibex_cs_registers #(
 
     mtvt_d       = csr_mtvt_init_i ? {boot_addr_i[31:8],   6'b0, 2'b11} : {csr_wdata_int[31:8], 6'b0, 2'b11};
     // CLIC regs
-    mnxti_d        = csr_wdata_int;
-    mnxti_d        = csr_wdata_int;
-    mintstatus_d   = csr_wdata_int;
-    mintthresh_d   = csr_wdata_int[7:0];
-    mscratchsw_d   = csr_wdata_int;
-    mscratchswl_d  = csr_wdata_int;
-    mclicbase_d    = {csr_wdata_int[31:12], 12'b0};
+    mnxti_d = csr_wdata_int;
+    mnxti_d = csr_wdata_int;
+    mintstatus_d = csr_wdata_int;
+    mintthresh_d = csr_wdata_int[7:0];
+    mscratchsw_d = csr_wdata_int;
+    mscratchswl_d = csr_wdata_int;
+    mclicbase_d = {csr_wdata_int[31:12], 12'b0};
 
-    edf_ts_d       = edf_ts_q;
-    edf_ts_en      = 1'b0;
-    edf_count_d    = edf_count_q;
-    edf_count_en   = 1'b0;
+    edf_ts_d = edf_ts_q;
+    edf_ts_en = 1'b0;
+    edf_count_d = edf_count_q;
+    edf_count_en = 1'b0;
 
-    mnxti_en       = 1'b0;
-    mintstatus_en  = 1'b0;
-    mintthresh_en  = 1'b0;
-    mscratchsw_en  = 1'b0;
+    mnxti_en = 1'b0;
+    mintstatus_en = 1'b0;
+    mintthresh_en = 1'b0;
+    mscratchsw_en = 1'b0;
     mscratchswl_en = 1'b0;
-    mclicbase_en   = 1'b0;
+    mclicbase_en = 1'b0;
 
-    dcsr_en      = 1'b0;
-    dcsr_d       = dcsr_q;
-    depc_d       = {csr_wdata_int[31:1], 1'b0};
-    depc_en      = 1'b0;
+    dcsr_en = 1'b0;
+    dcsr_d = dcsr_q;
+    depc_d = {csr_wdata_int[31:1], 1'b0};
+    depc_en = 1'b0;
     dscratch0_en = 1'b0;
     dscratch1_en = 1'b0;
 
-    mstack_en      = 1'b0;
-    mstack_d.mpie  = mstatus_q.mpie;
-    mstack_d.mpp   = mstatus_q.mpp;
-    mstack_epc_d   = mepc_q;
+    mstack_en = 1'b0;
+    mstack_d.mpie = mstatus_q.mpie;
+    mstack_d.mpp = mstatus_q.mpp;
+    mstack_epc_d = mepc_q;
     mstack_cause_d = mcause_q;
 
     mcountinhibit_we = 1'b0;
-    mhpmcounter_we   = '0;
-    mhpmcounterh_we  = '0;
+    mhpmcounter_we = '0;
+    mhpmcounterh_we = '0;
 
     cpuctrlsts_part_we = 1'b0;
-    cpuctrlsts_part_d  = cpuctrlsts_part_q;
+    cpuctrlsts_part_d = cpuctrlsts_part_q;
 
     double_fault_seen_o = 1'b0;
 
@@ -839,12 +843,12 @@ module ibex_cs_registers #(
         // mstatus: IE bit
         CSR_MSTATUS: begin
           mstatus_en = 1'b1;
-          mstatus_d    = '{
-              mie:  csr_wdata_int[CSR_MSTATUS_MIE_BIT],
+          mstatus_d = '{
+              mie: csr_wdata_int[CSR_MSTATUS_MIE_BIT],
               mpie: csr_wdata_int[CSR_MSTATUS_MPIE_BIT],
-              mpp:  priv_lvl_e'(csr_wdata_int[CSR_MSTATUS_MPP_BIT_HIGH:CSR_MSTATUS_MPP_BIT_LOW]),
+              mpp: priv_lvl_e'(csr_wdata_int[CSR_MSTATUS_MPP_BIT_HIGH:CSR_MSTATUS_MPP_BIT_LOW]),
               mprv: csr_wdata_int[CSR_MSTATUS_MPRV_BIT],
-              tw:   csr_wdata_int[CSR_MSTATUS_TW_BIT]
+              tw: csr_wdata_int[CSR_MSTATUS_TW_BIT]
           };
           // Convert illegal values to U-mode
           if ((mstatus_d.mpp != PRIV_LVL_M) && (mstatus_d.mpp != PRIV_LVL_U)) begin
@@ -854,9 +858,7 @@ module ibex_cs_registers #(
         end
 
         // interrupt enable
-        CSR_MIE:
-          if (!CLIC)
-            mie_en = 1'b1;
+        CSR_MIE: if (!CLIC) mie_en = 1'b1;
 
         CSR_MSCRATCH: mscratch_en = 1'b1;
 
@@ -867,19 +869,30 @@ module ibex_cs_registers #(
         CSR_MCAUSE: begin
           mcause_en = 1'b1;
           if (CLIC) begin
-            mcause_d = '{ irq         : csr_wdata_int[31],
-                          minhv       : csr_wdata_int[30],
-                          mpp         : csr_wdata_int[29:28],
-                          mpie        : csr_wdata_int[27],
-                          // 26:24 reserved
-                          mpil        : csr_wdata_int[23:16],
-                          // 15:12 reserved
-                          cause       : csr_wdata_int[11:0]};
-          end else
-            $fatal("Non-CLIC mode currently not supported on this implementation.");
-            //mcause_d = '{irq_ext : csr_wdata_int[31:30] == 2'b10,
-            //             irq_int : csr_wdata_int[31:30] == 2'b11,
-            //             lower_cause: csr_wdata_int[4:0]};
+            mcause_d = '{
+                irq         : csr_wdata_int[31],
+                minhv       : csr_wdata_int[30],
+                mpp         : csr_wdata_int[29:28],
+                mpie        : csr_wdata_int[27],
+                // 26:24 reserved
+                mpil        :
+                csr_wdata_int[
+                23
+                :
+                16
+                ],
+                // 15:12 reserved
+                cause       :
+                csr_wdata_int[
+                11
+                :
+                0
+                ]
+            };
+          end else $fatal("Non-CLIC mode currently not supported on this implementation.");
+          //mcause_d = '{irq_ext : csr_wdata_int[31:30] == 2'b10,
+          //             irq_int : csr_wdata_int[31:30] == 2'b11,
+          //             lower_cause: csr_wdata_int[4:0]};
         end
         // TODO: CLIC
 
@@ -898,26 +911,26 @@ module ibex_cs_registers #(
         end
 
         CSR_EDF_TS_LO: begin
-          edf_ts_en  = 1'b1;
-          edf_ts_d   = {edf_ts_q[63:32], csr_wdata_int};
+          edf_ts_en = 1'b1;
+          edf_ts_d  = {edf_ts_q[63:32], csr_wdata_int};
         end
         CSR_EDF_TS_HI: begin
-          edf_ts_en  = 1'b1;
-          edf_ts_d   = {csr_wdata_int, edf_ts_q[31:0]};
+          edf_ts_en = 1'b1;
+          edf_ts_d  = {csr_wdata_int, edf_ts_q[31:0]};
         end
 
         CSR_EDF_CTRL: begin
-          edf_ts_en  = 1'b1;
-          edf_ts_d   = mtime_i;
+          edf_ts_en = 1'b1;
+          edf_ts_d  = mtime_i;
         end
 
         // CLIC registers
-        CSR_MNXTI:       mnxti_en       = 1'b1;
-        CSR_MINTSATUS:   mintstatus_en  = 1'b1;
-        CSR_MINTTHRESH:  mintthresh_en  = 1'b1;
-        CSR_MSCRATCHSW:  mscratchsw_en  = 1'b1;
+        CSR_MNXTI:       mnxti_en = 1'b1;
+        CSR_MINTSATUS:   mintstatus_en = 1'b1;
+        CSR_MINTTHRESH:  mintthresh_en = 1'b1;
+        CSR_MSCRATCHSW:  mscratchsw_en = 1'b1;
         CSR_MSCRATCHSWL: mscratchswl_en = 1'b1;
-        CSR_MCLICBASE:   mclicbase_en   = 1'b1;
+        CSR_MCLICBASE:   mclicbase_en = 1'b1;
 
         CSR_DCSR: begin
           dcsr_d = csr_wdata_int;
@@ -928,22 +941,22 @@ module ibex_cs_registers #(
           end
 
           // Read-only for SW
-          dcsr_d.cause = dcsr_q.cause;
+          dcsr_d.cause     = dcsr_q.cause;
 
           // Interrupts always disabled during single stepping
-          dcsr_d.stepie = 1'b0;
+          dcsr_d.stepie    = 1'b0;
 
           // currently not supported:
-          dcsr_d.nmip = 1'b0;
-          dcsr_d.mprven = 1'b0;
+          dcsr_d.nmip      = 1'b0;
+          dcsr_d.mprven    = 1'b0;
           dcsr_d.stopcount = 1'b0;
-          dcsr_d.stoptime = 1'b0;
+          dcsr_d.stoptime  = 1'b0;
 
           // forced to be zero
-          dcsr_d.zero0 = 1'b0;
-          dcsr_d.zero1 = 1'b0;
-          dcsr_d.zero2 = 12'h0;
-          dcsr_en      = 1'b1;
+          dcsr_d.zero0     = 1'b0;
+          dcsr_d.zero1     = 1'b0;
+          dcsr_d.zero2     = 12'h0;
+          dcsr_en          = 1'b1;
         end
 
         // dpc: debug program counter
@@ -986,16 +999,16 @@ module ibex_cs_registers #(
           cpuctrlsts_part_we = 1'b1;
         end
 
-        default:;
+        default: ;
       endcase
     end
 
     // Dynamic mintstatus.mil increment
-    if (mintstatus_q.mil != 8'h00 &&  mintstatus_q.mil != 8'hFF) begin
+    if (mintstatus_q.mil != 8'h00 && mintstatus_q.mil != 8'hFF) begin
       if (mtime_clk != mtime_clk_q) begin
         edf_count_en = 1'b1;
         mintstatus_en = 1'b1;
-        mintstatus_d.mil = mintstatus_q.mil + 8'h1; // + 8'(task_blocked_counter);
+        mintstatus_d.mil = mintstatus_q.mil + 8'h1;  // + 8'(task_blocked_counter);
 
         edf_count_d = edf_count_q + 32'h1;
       end
@@ -1003,18 +1016,18 @@ module ibex_cs_registers #(
 
     // Fix traling increment after task completion
     if (mintstatus_q.mil == 8'h00 && edf_count_q != 0) begin
-        edf_count_en = 1'b1;
-        edf_count_d  = 32'h0;
+      edf_count_en = 1'b1;
+      edf_count_d  = 32'h0;
     end
 
     // exception controller gets priority over other writes
     unique case (1'b1)
       // fast LSU mepc/mcause restore for Hardware Stacking
       csr_fast_lsu_i: begin
-        if(lsu_rdata_valid_i) begin
-          if(!stacking_csr_select_i) begin   // save mepc
-            mepc_en        = 1'b1;
-            mepc_d         = lsu_rdata_i;
+        if (lsu_rdata_valid_i) begin
+          if (!stacking_csr_select_i) begin  // save mepc
+            mepc_en = 1'b1;
+            mepc_d  = lsu_rdata_i;
           end else begin
             mcause_en      = 1'b1;
             mcause_d.irq   = lsu_rdata_i[31];
@@ -1052,7 +1065,7 @@ module ibex_cs_registers #(
           csr_save_wb_i: begin
             exception_pc = pc_wb_i;
           end
-          default:;
+          default: ;
         endcase
 
         // Any exception, including debug mode, causes a switch to M-mode
@@ -1069,23 +1082,23 @@ module ibex_cs_registers #(
         end else if (!debug_mode_i) begin
           // Exceptions do not update CSRs in debug mode, so ony write these CSRs if we're not in
           // debug mode.
-          mtval_en       = 1'b1;
-          mtval_d        = csr_mtval_i;
-          mstatus_en     = 1'b1;
-          mstatus_d.mie  = 1'b0; // disable interrupts
+          mtval_en         = 1'b1;
+          mtval_d          = csr_mtval_i;
+          mstatus_en       = 1'b1;
+          mstatus_d.mie    = 1'b0;  // disable interrupts
           // save current status
-          mstatus_d.mpie = mstatus_q.mie;
-          mstatus_d.mpp  = priv_lvl_q;
+          mstatus_d.mpie   = mstatus_q.mie;
+          mstatus_d.mpp    = priv_lvl_q;
 
-          mepc_en        = 1'b1;
-          mepc_d         = exception_pc;
-          mcause_en      = 1'b1;
-          mcause_d       = csr_mcause_i;
+          mepc_en          = 1'b1;
+          mepc_d           = exception_pc;
+          mcause_en        = 1'b1;
+          mcause_d         = csr_mcause_i;
           // save previous status for recoverable NMI
-          mstack_en      = 1'b1;
+          mstack_en        = 1'b1;
 
           // Save the interrupt's priority level
-          mintstatus_en  = 1'b1;
+          mintstatus_en    = 1'b1;
           mintstatus_d.mil = irq_level_i;
 
           if (!(mcause_d.irq)) begin
@@ -1100,18 +1113,18 @@ module ibex_cs_registers #(
             end
           end
         end
-      end // csr_save_cause_i
+      end  // csr_save_cause_i
 
-      csr_restore_dret_i: begin // DRET
-        priv_lvl_d = PRIV_LVL_M; //dcsr_q.prv;
-      end // csr_restore_dret_i
+      csr_restore_dret_i: begin  // DRET
+        priv_lvl_d = PRIV_LVL_M;  //dcsr_q.prv;
+      end  // csr_restore_dret_i
 
-      csr_restore_mret_i: begin // MRET
-        priv_lvl_d     = PRIV_LVL_M; //mstatus_q.mpp;
-        mstatus_en     = 1'b1;
-        mstatus_d.mie  = mstatus_q.mpie; // re-enable interrupts
+      csr_restore_mret_i: begin  // MRET
+        priv_lvl_d    = PRIV_LVL_M;  //mstatus_q.mpp;
+        mstatus_en    = 1'b1;
+        mstatus_d.mie = mstatus_q.mpie;  // re-enable interrupts
 
-        mintstatus_en  = 1'b1;
+        mintstatus_en = 1'b1;
 
         if (mstatus_q.mpp != PRIV_LVL_M) begin
           mstatus_d.mprv = 1'b0;
@@ -1137,11 +1150,11 @@ module ibex_cs_registers #(
 
           // set mstatus.MPIE/MPP
           mstatus_d.mpie = 1'b1;
-          mstatus_d.mpp  = PRIV_LVL_M;    // user-mode is not support, Return to machine-mode
+          mstatus_d.mpp = PRIV_LVL_M;  // user-mode is not support, Return to machine-mode
         end
-      end // csr_restore_mret_i
+      end  // csr_restore_mret_i
 
-      default:;
+      default: ;
     endcase
   end
 
@@ -1163,26 +1176,26 @@ module ibex_cs_registers #(
   // CSR operation logic
   always_comb begin
     unique case (csr_op_i)
-      CSR_OP_WRITE: csr_wdata_int =  csr_wdata_i;
-      CSR_OP_SET:   csr_wdata_int =  csr_wdata_i | csr_rdata_o;
+      CSR_OP_WRITE: csr_wdata_int = csr_wdata_i;
+      CSR_OP_SET:   csr_wdata_int = csr_wdata_i | csr_rdata_o;
       CSR_OP_CLEAR: csr_wdata_int = ~csr_wdata_i & csr_rdata_o;
       CSR_OP_READ:  csr_wdata_int = csr_wdata_i;
       default:      csr_wdata_int = csr_wdata_i;
     endcase
   end
 
-  assign csr_wr = (csr_op_i inside {CSR_OP_WRITE, CSR_OP_SET, CSR_OP_CLEAR});
+  assign csr_wr              = (csr_op_i inside {CSR_OP_WRITE, CSR_OP_SET, CSR_OP_CLEAR});
 
   // only write CSRs during one clock cycle
-  assign csr_we_int  = csr_wr & csr_op_en_i & ~illegal_csr_insn_o;
+  assign csr_we_int          = csr_wr & csr_op_en_i & ~illegal_csr_insn_o;
 
-  assign csr_rdata_o = csr_rdata_int;
+  assign csr_rdata_o         = csr_rdata_int;
 
   // directly output some registers
-  assign csr_mepc_o  = mepc_q;
-  assign csr_depc_o  = depc_q;
-  assign csr_mtvec_o = mtvec_q;
-  assign csr_mtval_o = mtval_q;
+  assign csr_mepc_o          = mepc_q;
+  assign csr_depc_o          = depc_q;
+  assign csr_mtvec_o         = mtvec_q;
+  assign csr_mtval_o         = mtval_q;
 
   assign csr_mstatus_mie_o   = mstatus_q.mie;
   assign csr_mstatus_tw_o    = mstatus_q.tw;
@@ -1193,7 +1206,7 @@ module ibex_cs_registers #(
   // Qualify incoming interrupt requests in mip CSR with mie CSR for controller and to re-enable
   // clock upon WFI (must be purely combinational).
   //assign ibex_irqs_o        =
-  assign irq_pending_o = |mip & |mie_q;
+  assign irq_pending_o       = |mip & |mie_q;
 
   ////////////////////////
   // CSR instantiations //
@@ -1202,36 +1215,38 @@ module ibex_cs_registers #(
   // MSTATUS
 
   // Reset value is in M-MODE
-  localparam status_t MSTATUS_RST_VAL = '{mie:  1'b0,
-                                          mpie: 1'b1,
-                                          mpp:  PRIV_LVL_M,
-                                          mprv: 1'b0,
-                                          tw:   1'b0};
+  localparam status_t MSTATUS_RST_VAL = '{
+      mie: 1'b0,
+      mpie: 1'b1,
+      mpp: PRIV_LVL_M,
+      mprv: 1'b0,
+      tw: 1'b0
+  };
   ibex_csr #(
-    .Width     ($bits(status_t)),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue({MSTATUS_RST_VAL})
+      .Width     ($bits(status_t)),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue({MSTATUS_RST_VAL})
   ) u_mstatus_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i ({mstatus_d}),
-    .wr_en_i   (mstatus_en),
-    .rd_data_o (mstatus_q),
-    .rd_error_o(mstatus_err)
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i ({mstatus_d}),
+      .wr_en_i   (mstatus_en),
+      .rd_data_o (mstatus_q),
+      .rd_error_o(mstatus_err)
   );
 
   // MEPC
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_mepc_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mepc_d),
-    .wr_en_i   (mepc_en),
-    .rd_data_o (mepc_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mepc_d),
+      .wr_en_i   (mepc_en),
+      .rd_data_o (mepc_q),
+      .rd_error_o()
   );
 
   // MIE
@@ -1240,115 +1255,115 @@ module ibex_cs_registers #(
   assign mie_d.irq_external = csr_wdata_int[CSR_MEIX_BIT];
   //assign mie_d.irq_fast     = csr_wdata_int[CSR_MFIX_BIT_HIGH:CSR_MFIX_BIT_LOW];
   ibex_csr #(
-    .Width     ($bits(irqs_t)),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     ($bits(irqs_t)),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_mie_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i ({mie_d}),
-    .wr_en_i   (mie_en),
-    .rd_data_o (mie_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i ({mie_d}),
+      .wr_en_i   (mie_en),
+      .rd_data_o (mie_q),
+      .rd_error_o()
   );
 
   // MSCRATCH
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_mscratch_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (csr_wdata_int),
-    .wr_en_i   (mscratch_en),
-    .rd_data_o (mscratch_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (csr_wdata_int),
+      .wr_en_i   (mscratch_en),
+      .rd_data_o (mscratch_q),
+      .rd_error_o()
   );
 
   // MCAUSE
   ibex_csr #(
-    .Width     ($bits(exc_cause_t)),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     ($bits(exc_cause_t)),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_mcause_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i ({mcause_d}),
-    .wr_en_i   (mcause_en),
-    .rd_data_o (mcause_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i ({mcause_d}),
+      .wr_en_i   (mcause_en),
+      .rd_data_o (mcause_q),
+      .rd_error_o()
   );
 
   // MTVAL
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_mtval_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mtval_d),
-    .wr_en_i   (mtval_en),
-    .rd_data_o (mtval_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mtval_d),
+      .wr_en_i   (mtval_en),
+      .rd_data_o (mtval_q),
+      .rd_error_o()
   );
 
   // MTVEC
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue(MTVEC_MODE)
+      .Width     (32),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue(MTVEC_MODE)
   ) u_mtvec_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mtvec_d),
-    .wr_en_i   (mtvec_en),
-    .rd_data_o (mtvec_q),
-    .rd_error_o(mtvec_err)
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mtvec_d),
+      .wr_en_i   (mtvec_en),
+      .rd_data_o (mtvec_q),
+      .rd_error_o(mtvec_err)
   );
 
   // MTVT
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue('0)
   ) u_mtvt_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mtvt_d),
-    .wr_en_i   (mtvt_en),
-    .rd_data_o (mtvt_q),
-    .rd_error_o(mtvt_err)
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mtvt_d),
+      .wr_en_i   (mtvt_en),
+      .rd_data_o (mtvt_q),
+      .rd_error_o(mtvt_err)
   );
 
   // EDF_TS
   ibex_csr #(
-    .Width     (64),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (64),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_edf_ts_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (edf_ts_d),
-    .wr_en_i   (edf_ts_en),
-    .rd_data_o (edf_ts_q),
-    .rd_error_o(edf_ts_err)
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (edf_ts_d),
+      .wr_en_i   (edf_ts_en),
+      .rd_data_o (edf_ts_q),
+      .rd_error_o(edf_ts_err)
   );
 
 
   // EDF_COUNT
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_edf_count_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (edf_count_d),
-    .wr_en_i   (edf_count_en),
-    .rd_data_o (edf_count_q),
-    .rd_error_o(edf_count_err)
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (edf_count_d),
+      .wr_en_i   (edf_count_en),
+      .rd_data_o (edf_count_q),
+      .rd_error_o(edf_count_err)
   );
 
 
@@ -1360,101 +1375,101 @@ module ibex_cs_registers #(
       default: '0
   };
   ibex_csr #(
-    .Width     ($bits(dcsr_t)),
-    .ShadowCopy(1'b0),
-    .ResetValue({DCSR_RESET_VAL})
+      .Width     ($bits(dcsr_t)),
+      .ShadowCopy(1'b0),
+      .ResetValue({DCSR_RESET_VAL})
   ) u_dcsr_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i ({dcsr_d}),
-    .wr_en_i   (dcsr_en),
-    .rd_data_o (dcsr_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i ({dcsr_d}),
+      .wr_en_i   (dcsr_en),
+      .rd_data_o (dcsr_q),
+      .rd_error_o()
   );
 
   // DEPC
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_depc_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (depc_d),
-    .wr_en_i   (depc_en),
-    .rd_data_o (depc_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (depc_d),
+      .wr_en_i   (depc_en),
+      .rd_data_o (depc_q),
+      .rd_error_o()
   );
 
   // DSCRATCH0
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_dscratch0_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (csr_wdata_int),
-    .wr_en_i   (dscratch0_en),
-    .rd_data_o (dscratch0_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (csr_wdata_int),
+      .wr_en_i   (dscratch0_en),
+      .rd_data_o (dscratch0_q),
+      .rd_error_o()
   );
 
   // DSCRATCH1
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_dscratch1_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (csr_wdata_int),
-    .wr_en_i   (dscratch1_en),
-    .rd_data_o (dscratch1_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (csr_wdata_int),
+      .wr_en_i   (dscratch1_en),
+      .rd_data_o (dscratch1_q),
+      .rd_error_o()
   );
 
   // MSTACK
   localparam status_stk_t MSTACK_RESET_VAL = '{mpie: 1'b1, mpp: PRIV_LVL_M};
   ibex_csr #(
-    .Width     ($bits(status_stk_t)),
-    .ShadowCopy(1'b0),
-    .ResetValue({MSTACK_RESET_VAL})
+      .Width     ($bits(status_stk_t)),
+      .ShadowCopy(1'b0),
+      .ResetValue({MSTACK_RESET_VAL})
   ) u_mstack_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i ({mstack_d}),
-    .wr_en_i   (mstack_en),
-    .rd_data_o (mstack_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i ({mstack_d}),
+      .wr_en_i   (mstack_en),
+      .rd_data_o (mstack_q),
+      .rd_error_o()
   );
 
   // MSTACK_EPC
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_mstack_epc_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mstack_epc_d),
-    .wr_en_i   (mstack_en),
-    .rd_data_o (mstack_epc_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mstack_epc_d),
+      .wr_en_i   (mstack_en),
+      .rd_data_o (mstack_epc_q),
+      .rd_error_o()
   );
 
   // MSTACK_CAUSE
   ibex_csr #(
-    .Width     ($bits(exc_cause_t)),
-    .ShadowCopy(1'b0),
-    .ResetValue('0)
+      .Width     ($bits(exc_cause_t)),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
   ) u_mstack_cause_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mstack_cause_d),
-    .wr_en_i   (mstack_en),
-    .rd_data_o (mstack_cause_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mstack_cause_d),
+      .wr_en_i   (mstack_en),
+      .rd_data_o (mstack_cause_q),
+      .rd_error_o()
   );
 
   // -----------------
@@ -1463,99 +1478,98 @@ module ibex_cs_registers #(
 
   // MNXTI
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue('0)
   ) u_mnxti_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mnxti_d),
-    .wr_en_i   (mnxti_en),
-    .rd_data_o (mnxti_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mnxti_d),
+      .wr_en_i   (mnxti_en),
+      .rd_data_o (mnxti_q),
+      .rd_error_o()
   );
 
   // MINTSTATUS
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue('0)
   ) u_mintstatus_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mintstatus_d),
-    .wr_en_i   (mintstatus_en),
-    .rd_data_o (mintstatus_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mintstatus_d),
+      .wr_en_i   (mintstatus_en),
+      .rd_data_o (mintstatus_q),
+      .rd_error_o()
   );
 
   // MINTTHRESH
   ibex_csr #(
-    .Width     (8),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
+      .Width     (8),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue('0)
   ) u_mintthresh_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mintthresh_d),
-    .wr_en_i   (mintthresh_en),
-    .rd_data_o (mintthresh_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mintthresh_d),
+      .wr_en_i   (mintthresh_en),
+      .rd_data_o (mintthresh_q),
+      .rd_error_o()
   );
 
   // MSCRATCHSW
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue('0)
   ) u_mscratchsw_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mscratchsw_d),
-    .wr_en_i   (mscratchsw_en),
-    .rd_data_o (mscratchsw_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mscratchsw_d),
+      .wr_en_i   (mscratchsw_en),
+      .rd_data_o (mscratchsw_q),
+      .rd_error_o()
   );
 
   // MSCRATCHSWL
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
+      .Width     (32),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue('0)
   ) u_mscratchswl_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mscratchswl_d),
-    .wr_en_i   (mscratchswl_en),
-    .rd_data_o (mscratchswl_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mscratchswl_d),
+      .wr_en_i   (mscratchswl_en),
+      .rd_data_o (mscratchswl_q),
+      .rd_error_o()
   );
 
   //MCLICBASE
   ibex_csr #(
-    .Width     (32),
-    .ShadowCopy(1'b0),
-    .ResetValue(MCLICBASE_ADDR)
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue(MCLICBASE_ADDR)
   ) u_mclicbase (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i (mclicbase_d),
-    .wr_en_i   (mclicbase_en),
-    .rd_data_o (mclicbase_q),
-    .rd_error_o()
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (mclicbase_d),
+      .wr_en_i   (mclicbase_en),
+      .rd_data_o (mclicbase_q),
+      .rd_error_o()
   );
 
-  always_ff @(posedge clk_i or negedge rst_ni)
-  begin : register_irq_inputs
-    if(~rst_ni) begin
-      irq_q       <= '0;
-      irq_level_q <= '0;
-      irq_shv_q   <= '0;
+  always_ff @(posedge clk_i or negedge rst_ni) begin : register_irq_inputs
+    if (~rst_ni) begin
+      irq_q            <= '0;
+      irq_level_q      <= '0;
+      irq_shv_q        <= '0;
       irq_id_instant_q <= '0;
     end else begin
-      irq_q       <= irq_d;
-      irq_shv_q   <= irq_shv_d;
-      irq_level_q <= irq_level_d;
+      irq_q            <= irq_d;
+      irq_shv_q        <= irq_shv_d;
+      irq_level_q      <= irq_level_d;
       irq_id_instant_q <= irq_id_instant_d;
     end
   end
@@ -1566,32 +1580,38 @@ module ibex_cs_registers #(
 
   if (PMPEnable) begin : g_pmp_registers
     // PMP reset values
-    `ifdef IBEX_CUSTOM_PMP_RESET_VALUES
-      `include "ibex_pmp_reset.svh"
-    `else
-      `include "ibex_pmp_reset_default.svh"
-    `endif
+`ifdef IBEX_CUSTOM_PMP_RESET_VALUES
+    `include "ibex_pmp_reset.svh"
+`else
+    `include "ibex_pmp_reset_default.svh"
+`endif
 
-    pmp_mseccfg_t                pmp_mseccfg_q, pmp_mseccfg_d;
-    logic                        pmp_mseccfg_we;
-    logic                        pmp_mseccfg_err;
-    pmp_cfg_t                    pmp_cfg         [PMPNumRegions];
-    logic [PMPNumRegions-1:0]    pmp_cfg_locked;
-    logic [PMPNumRegions-1:0]    pmp_cfg_wr_suppress;
-    pmp_cfg_t                    pmp_cfg_wdata   [PMPNumRegions];
-    logic [PMPAddrWidth-1:0]     pmp_addr        [PMPNumRegions];
-    logic [PMPNumRegions-1:0]    pmp_cfg_we;
-    logic [PMPNumRegions-1:0]    pmp_cfg_err;
-    logic [PMPNumRegions-1:0]    pmp_addr_we;
-    logic [PMPNumRegions-1:0]    pmp_addr_err;
-    logic                        any_pmp_entry_locked;
+    pmp_mseccfg_t pmp_mseccfg_q, pmp_mseccfg_d;
+    logic                         pmp_mseccfg_we;
+    logic                         pmp_mseccfg_err;
+    pmp_cfg_t                     pmp_cfg              [PMPNumRegions];
+    logic     [PMPNumRegions-1:0] pmp_cfg_locked;
+    logic     [PMPNumRegions-1:0] pmp_cfg_wr_suppress;
+    pmp_cfg_t                     pmp_cfg_wdata        [PMPNumRegions];
+    logic     [ PMPAddrWidth-1:0] pmp_addr             [PMPNumRegions];
+    logic     [PMPNumRegions-1:0] pmp_cfg_we;
+    logic     [PMPNumRegions-1:0] pmp_cfg_err;
+    logic     [PMPNumRegions-1:0] pmp_addr_we;
+    logic     [PMPNumRegions-1:0] pmp_addr_err;
+    logic                         any_pmp_entry_locked;
 
     // Expanded / qualified register read data
     for (genvar i = 0; i < PMP_MAX_REGIONS; i++) begin : g_exp_rd_data
       if (i < PMPNumRegions) begin : g_implemented_regions
         // Add in zero padding for reserved fields
-        assign pmp_cfg_rdata[i] = {pmp_cfg[i].lock, 2'b00, pmp_cfg[i].mode,
-                                   pmp_cfg[i].exec, pmp_cfg[i].write, pmp_cfg[i].read};
+        assign pmp_cfg_rdata[i] = {
+          pmp_cfg[i].lock,
+          2'b00,
+          pmp_cfg[i].mode,
+          pmp_cfg[i].exec,
+          pmp_cfg[i].write,
+          pmp_cfg[i].read
+        };
 
         // Address field read data depends on the current programmed mode and the granularity
         if (PMPGranularity == 0) begin : g_pmp_g0
@@ -1638,36 +1658,35 @@ module ibex_cs_registers #(
                              (csr_addr == (CSR_OFF_PMP_CFG + (i[11:0] >> 2)));
 
       // Select the correct WDATA (each CSR contains 4 CFG fields, each with 2 RES bits)
-      assign pmp_cfg_wdata[i].lock  = csr_wdata_int[(i%4)*PMP_CFG_W+7];
+      assign pmp_cfg_wdata[i].lock = csr_wdata_int[(i%4)*PMP_CFG_W+7];
       // NA4 mode is not selectable when G > 0, mode is treated as OFF
       always_comb begin
         unique case (csr_wdata_int[(i%4)*PMP_CFG_W+3+:2])
-          2'b00   : pmp_cfg_wdata[i].mode = PMP_MODE_OFF;
-          2'b01   : pmp_cfg_wdata[i].mode = PMP_MODE_TOR;
-          2'b10   : pmp_cfg_wdata[i].mode = (PMPGranularity == 0) ? PMP_MODE_NA4:
-                                                                    PMP_MODE_OFF;
-          2'b11   : pmp_cfg_wdata[i].mode = PMP_MODE_NAPOT;
-          default : pmp_cfg_wdata[i].mode = PMP_MODE_OFF;
+          2'b00:   pmp_cfg_wdata[i].mode = PMP_MODE_OFF;
+          2'b01:   pmp_cfg_wdata[i].mode = PMP_MODE_TOR;
+          2'b10:   pmp_cfg_wdata[i].mode = (PMPGranularity == 0) ? PMP_MODE_NA4 : PMP_MODE_OFF;
+          2'b11:   pmp_cfg_wdata[i].mode = PMP_MODE_NAPOT;
+          default: pmp_cfg_wdata[i].mode = PMP_MODE_OFF;
         endcase
       end
-      assign pmp_cfg_wdata[i].exec  = csr_wdata_int[(i%4)*PMP_CFG_W+2];
+      assign pmp_cfg_wdata[i].exec = csr_wdata_int[(i%4)*PMP_CFG_W+2];
       // When MSECCFG.MML is unset, W = 1, R = 0 is a reserved combination, so force W to 0 if R ==
       // 0. Otherwise allow all possible values to be written.
       assign pmp_cfg_wdata[i].write = pmp_mseccfg_q.mml ? csr_wdata_int[(i%4)*PMP_CFG_W+1] :
                                                           &csr_wdata_int[(i%4)*PMP_CFG_W+:2];
-      assign pmp_cfg_wdata[i].read  = csr_wdata_int[(i%4)*PMP_CFG_W];
+      assign pmp_cfg_wdata[i].read = csr_wdata_int[(i%4)*PMP_CFG_W];
 
       ibex_csr #(
-        .Width     ($bits(pmp_cfg_t)),
-        .ShadowCopy(ShadowCSR),
-        .ResetValue(pmp_cfg_rst[i])
+          .Width     ($bits(pmp_cfg_t)),
+          .ShadowCopy(ShadowCSR),
+          .ResetValue(pmp_cfg_rst[i])
       ) u_pmp_cfg_csr (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .wr_data_i ({pmp_cfg_wdata[i]}),
-        .wr_en_i   (pmp_cfg_we[i]),
-        .rd_data_o (pmp_cfg[i]),
-        .rd_error_o(pmp_cfg_err[i])
+          .clk_i     (clk_i),
+          .rst_ni    (rst_ni),
+          .wr_data_i ({pmp_cfg_wdata[i]}),
+          .wr_en_i   (pmp_cfg_we[i]),
+          .rd_data_o (pmp_cfg[i]),
+          .rd_error_o(pmp_cfg_err[i])
       );
 
       // MSECCFG.RLB allows the lock bit to be bypassed (allowing cfg writes when MSECCFG.RLB is
@@ -1676,9 +1695,9 @@ module ibex_cs_registers #(
 
       // When MSECCFG.MML is set cannot add new regions allowing M mode execution unless MSECCFG.RLB
       // is set
-      assign pmp_cfg_wr_suppress[i] = pmp_mseccfg_q.mml                   &
-                                      ~pmp_mseccfg.rlb                    &
-                                      is_mml_m_exec_cfg(pmp_cfg_wdata[i]);
+      assign pmp_cfg_wr_suppress[i] = pmp_mseccfg_q.mml & ~pmp_mseccfg.rlb & is_mml_m_exec_cfg(
+          pmp_cfg_wdata[i]
+      );
 
       // --------------------------
       // Instantiate addr registers
@@ -1693,16 +1712,16 @@ module ibex_cs_registers #(
       end
 
       ibex_csr #(
-        .Width     (PMPAddrWidth),
-        .ShadowCopy(ShadowCSR),
-        .ResetValue(pmp_addr_rst[i][33-:PMPAddrWidth])
+          .Width     (PMPAddrWidth),
+          .ShadowCopy(ShadowCSR),
+          .ResetValue(pmp_addr_rst[i][33-:PMPAddrWidth])
       ) u_pmp_addr_csr (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .wr_data_i (csr_wdata_int[31-:PMPAddrWidth]),
-        .wr_en_i   (pmp_addr_we[i]),
-        .rd_data_o (pmp_addr[i]),
-        .rd_error_o(pmp_addr_err[i])
+          .clk_i     (clk_i),
+          .rst_ni    (rst_ni),
+          .wr_data_i (csr_wdata_int[31-:PMPAddrWidth]),
+          .wr_en_i   (pmp_addr_we[i]),
+          .rd_data_o (pmp_addr[i]),
+          .rd_error_o(pmp_addr_err[i])
       );
 
       `ASSERT_INIT(PMPAddrRstLowBitsZero_A, pmp_addr_rst[i][33-PMPAddrWidth:0] == '0)
@@ -1714,7 +1733,7 @@ module ibex_cs_registers #(
     assign pmp_mseccfg_we = csr_we_int & (csr_addr == CSR_MSECCFG);
 
     // MSECCFG.MML/MSECCFG.MMWP cannot be unset once set
-    assign pmp_mseccfg_d.mml  = pmp_mseccfg_q.mml  ? 1'b1 : csr_wdata_int[CSR_MSECCFG_MML_BIT];
+    assign pmp_mseccfg_d.mml = pmp_mseccfg_q.mml ? 1'b1 : csr_wdata_int[CSR_MSECCFG_MML_BIT];
     assign pmp_mseccfg_d.mmwp = pmp_mseccfg_q.mmwp ? 1'b1 : csr_wdata_int[CSR_MSECCFG_MMWP_BIT];
 
     // pmp_cfg_locked factors in MSECCFG.RLB so any_pmp_entry_locked will only be set if MSECCFG.RLB
@@ -1726,16 +1745,16 @@ module ibex_cs_registers #(
     assign pmp_mseccfg_d.rlb = any_pmp_entry_locked ? 1'b0 : csr_wdata_int[CSR_MSECCFG_RLB_BIT];
 
     ibex_csr #(
-      .Width     ($bits(pmp_mseccfg_t)),
-      .ShadowCopy(ShadowCSR),
-      .ResetValue(pmp_mseccfg_rst)
+        .Width     ($bits(pmp_mseccfg_t)),
+        .ShadowCopy(ShadowCSR),
+        .ResetValue(pmp_mseccfg_rst)
     ) u_pmp_mseccfg (
-      .clk_i     (clk_i),
-      .rst_ni    (rst_ni),
-      .wr_data_i (pmp_mseccfg_d),
-      .wr_en_i   (pmp_mseccfg_we),
-      .rd_data_o (pmp_mseccfg_q),
-      .rd_error_o(pmp_mseccfg_err)
+        .clk_i     (clk_i),
+        .rst_ni    (rst_ni),
+        .wr_data_i (pmp_mseccfg_d),
+        .wr_en_i   (pmp_mseccfg_we),
+        .rd_data_o (pmp_mseccfg_q),
+        .rd_error_o(pmp_mseccfg_err)
     );
 
     assign pmp_csr_err = (|pmp_cfg_err) | (|pmp_addr_err) | pmp_mseccfg_err;
@@ -1784,19 +1803,19 @@ module ibex_cs_registers #(
     // appropriately.
     //
     // active counters
-    mhpmcounter_incr[0]  = 1'b1;                   // mcycle
-    mhpmcounter_incr[1]  = 1'b0;                   // reserved
-    mhpmcounter_incr[2]  = instr_ret_i;            // minstret
-    mhpmcounter_incr[3]  = dside_wait_i;           // cycles waiting for data memory
-    mhpmcounter_incr[4]  = iside_wait_i;           // cycles waiting for instr fetches
-    mhpmcounter_incr[5]  = mem_load_i;             // num of loads
-    mhpmcounter_incr[6]  = mem_store_i;            // num of stores
-    mhpmcounter_incr[7]  = jump_i;                 // num of jumps (unconditional)
-    mhpmcounter_incr[8]  = branch_i;               // num of branches (conditional)
-    mhpmcounter_incr[9]  = branch_taken_i;         // num of taken branches (conditional)
-    mhpmcounter_incr[10] = instr_ret_compressed_i; // num of compressed instr
-    mhpmcounter_incr[11] = mul_wait_i;             // cycles waiting for multiply
-    mhpmcounter_incr[12] = div_wait_i;             // cycles waiting for divide
+    mhpmcounter_incr[0]  = 1'b1;  // mcycle
+    mhpmcounter_incr[1]  = 1'b0;  // reserved
+    mhpmcounter_incr[2]  = instr_ret_i;  // minstret
+    mhpmcounter_incr[3]  = dside_wait_i;  // cycles waiting for data memory
+    mhpmcounter_incr[4]  = iside_wait_i;  // cycles waiting for instr fetches
+    mhpmcounter_incr[5]  = mem_load_i;  // num of loads
+    mhpmcounter_incr[6]  = mem_store_i;  // num of stores
+    mhpmcounter_incr[7]  = jump_i;  // num of jumps (unconditional)
+    mhpmcounter_incr[8]  = branch_i;  // num of branches (conditional)
+    mhpmcounter_incr[9]  = branch_taken_i;  // num of taken branches (conditional)
+    mhpmcounter_incr[10] = instr_ret_compressed_i;  // num of compressed instr
+    mhpmcounter_incr[11] = mul_wait_i;  // cycles waiting for multiply
+    mhpmcounter_incr[12] = div_wait_i;  // cycles waiting for divide
   end
 
   // event selector (hardwired, 0 means no event)
@@ -1807,12 +1826,12 @@ module ibex_cs_registers #(
       mhpmevent[i] = '0;
 
       if (i >= 3) begin
-        mhpmevent[i][i - 3] = 1'b1;
+        mhpmevent[i][i-3] = 1'b1;
       end
     end
 
     // deactivate
-    mhpmevent[1] = '0; // not existing, reserved
+    mhpmevent[1] = '0;  // not existing, reserved
     for (int unsigned i = 3 + MHPMCounterNum; i < 32; i++) begin : gen_mhpmevent_inactive
       mhpmevent[i] = '0;
     end
@@ -1820,32 +1839,32 @@ module ibex_cs_registers #(
 
   // mcycle
   ibex_counter #(
-    .CounterWidth(64)
+      .CounterWidth(64)
   ) mcycle_counter_i (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .counter_inc_i(mhpmcounter_incr[0] & ~mcountinhibit[0]),
-    .counterh_we_i(mhpmcounterh_we[0]),
-    .counter_we_i(mhpmcounter_we[0]),
-    .counter_val_i(csr_wdata_int),
-    .counter_val_o(mhpmcounter[0]),
-    .counter_val_upd_o()
+      .clk_i(clk_i),
+      .rst_ni(rst_ni),
+      .counter_inc_i(mhpmcounter_incr[0] & ~mcountinhibit[0]),
+      .counterh_we_i(mhpmcounterh_we[0]),
+      .counter_we_i(mhpmcounter_we[0]),
+      .counter_val_i(csr_wdata_int),
+      .counter_val_o(mhpmcounter[0]),
+      .counter_val_upd_o()
   );
 
 
   // minstret
   ibex_counter #(
-    .CounterWidth(64),
-    .ProvideValUpd(1)
+      .CounterWidth (64),
+      .ProvideValUpd(1)
   ) minstret_counter_i (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .counter_inc_i(mhpmcounter_incr[2] & ~mcountinhibit[2]),
-    .counterh_we_i(mhpmcounterh_we[2]),
-    .counter_we_i(mhpmcounter_we[2]),
-    .counter_val_i(csr_wdata_int),
-    .counter_val_o(minstret_raw),
-    .counter_val_upd_o(minstret_next)
+      .clk_i(clk_i),
+      .rst_ni(rst_ni),
+      .counter_inc_i(mhpmcounter_incr[2] & ~mcountinhibit[2]),
+      .counterh_we_i(mhpmcounterh_we[2]),
+      .counter_we_i(mhpmcounter_we[2]),
+      .counter_val_i(csr_wdata_int),
+      .counter_val_o(minstret_raw),
+      .counter_val_upd_o(minstret_next)
   );
 
   // Where the writeback stage is present instruction in ID observing value of minstret must take
@@ -1858,9 +1877,9 @@ module ibex_cs_registers #(
   assign mhpmcounter[2] = instr_ret_spec_i & ~mcountinhibit[2] ? minstret_next : minstret_raw;
 
   // reserved:
-  assign mhpmcounter[1]            = '0;
-  assign unused_mhpmcounter_we_1   = mhpmcounter_we[1];
-  assign unused_mhpmcounterh_we_1  = mhpmcounterh_we[1];
+  assign mhpmcounter[1] = '0;
+  assign unused_mhpmcounter_we_1 = mhpmcounter_we[1];
+  assign unused_mhpmcounterh_we_1 = mhpmcounterh_we[1];
   assign unused_mhpmcounter_incr_1 = mhpmcounter_incr[1];
 
   // Iterate through optionally included counters (MHPMCounterNum controls how many are included)
@@ -1871,17 +1890,17 @@ module ibex_cs_registers #(
       logic [63:0] mhpmcounter_raw, mhpmcounter_next;
 
       ibex_counter #(
-        .CounterWidth(MHPMCounterWidth),
-        .ProvideValUpd(Cnt == 10)
+          .CounterWidth (MHPMCounterWidth),
+          .ProvideValUpd(Cnt == 10)
       ) mcounters_variable_i (
-        .clk_i(clk_i),
-        .rst_ni(rst_ni),
-        .counter_inc_i(mhpmcounter_incr[Cnt] & ~mcountinhibit[Cnt]),
-        .counterh_we_i(mhpmcounterh_we[Cnt]),
-        .counter_we_i(mhpmcounter_we[Cnt]),
-        .counter_val_i(csr_wdata_int),
-        .counter_val_o(mhpmcounter_raw),
-        .counter_val_upd_o(mhpmcounter_next)
+          .clk_i(clk_i),
+          .rst_ni(rst_ni),
+          .counter_inc_i(mhpmcounter_incr[Cnt] & ~mcountinhibit[Cnt]),
+          .counterh_we_i(mhpmcounterh_we[Cnt]),
+          .counter_we_i(mhpmcounter_we[Cnt]),
+          .counter_val_i(csr_wdata_int),
+          .counter_val_o(mhpmcounter_raw),
+          .counter_val_upd_o(mhpmcounter_next)
       );
 
       if (Cnt == 10) begin : gen_compressed_instr_cnt
@@ -1913,8 +1932,8 @@ module ibex_cs_registers #(
 
     assign mcountinhibit = {{29 - MHPMCounterNum{1'b0}}, mcountinhibit_q};
     // Lint tieoffs for unused bits
-    assign unused_mhphcounter_we   = mhpmcounter_we[31:MHPMCounterNum+3];
-    assign unused_mhphcounterh_we  = mhpmcounterh_we[31:MHPMCounterNum+3];
+    assign unused_mhphcounter_we = mhpmcounter_we[31:MHPMCounterNum+3];
+    assign unused_mhphcounterh_we = mhpmcounterh_we[31:MHPMCounterNum+3];
     assign unused_mhphcounter_incr = mhpmcounter_incr[31:MHPMCounterNum+3];
   end else begin : g_mcountinhibit_full
     assign mcountinhibit = mcountinhibit_q;
@@ -1937,13 +1956,13 @@ module ibex_cs_registers #(
     localparam int unsigned MaxTselect = DbgHwBreakNum - 1;
 
     // Register values
-    logic [DbgHwNumLen-1:0]   tselect_d, tselect_q;
+    logic [DbgHwNumLen-1:0] tselect_d, tselect_q;
     logic                     tmatch_control_d;
     logic [DbgHwBreakNum-1:0] tmatch_control_q;
-    logic [31:0]              tmatch_value_d;
-    logic [31:0]              tmatch_value_q[DbgHwBreakNum];
+    logic [             31:0] tmatch_value_d;
+    logic [             31:0] tmatch_value_q          [DbgHwBreakNum];
     logic                     selected_tmatch_control;
-    logic [31:0]              selected_tmatch_value;
+    logic [             31:0] selected_tmatch_value;
 
     // Write enables
     logic                     tselect_we;
@@ -1968,47 +1987,47 @@ module ibex_cs_registers #(
 
     // tmatch_control is enabled when the execute bit is set
     assign tmatch_control_d = csr_wdata_int[2];
-    assign tmatch_value_d   = csr_wdata_int[31:0];
+    assign tmatch_value_d = csr_wdata_int[31:0];
 
     // Registers
     ibex_csr #(
-      .Width     (DbgHwNumLen),
-      .ShadowCopy(1'b0),
-      .ResetValue('0)
+        .Width     (DbgHwNumLen),
+        .ShadowCopy(1'b0),
+        .ResetValue('0)
     ) u_tselect_csr (
-      .clk_i     (clk_i),
-      .rst_ni    (rst_ni),
-      .wr_data_i (tselect_d),
-      .wr_en_i   (tselect_we),
-      .rd_data_o (tselect_q),
-      .rd_error_o()
+        .clk_i     (clk_i),
+        .rst_ni    (rst_ni),
+        .wr_data_i (tselect_d),
+        .wr_en_i   (tselect_we),
+        .rd_data_o (tselect_q),
+        .rd_error_o()
     );
 
     for (genvar i = 0; i < DbgHwBreakNum; i++) begin : g_dbg_tmatch_reg
       ibex_csr #(
-        .Width     (1),
-        .ShadowCopy(1'b0),
-        .ResetValue('0)
+          .Width     (1),
+          .ShadowCopy(1'b0),
+          .ResetValue('0)
       ) u_tmatch_control_csr (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .wr_data_i (tmatch_control_d),
-        .wr_en_i   (tmatch_control_we[i]),
-        .rd_data_o (tmatch_control_q[i]),
-        .rd_error_o()
+          .clk_i     (clk_i),
+          .rst_ni    (rst_ni),
+          .wr_data_i (tmatch_control_d),
+          .wr_en_i   (tmatch_control_we[i]),
+          .rd_data_o (tmatch_control_q[i]),
+          .rd_error_o()
       );
 
       ibex_csr #(
-        .Width     (32),
-        .ShadowCopy(1'b0),
-        .ResetValue('0)
+          .Width     (32),
+          .ShadowCopy(1'b0),
+          .ResetValue('0)
       ) u_tmatch_value_csr (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .wr_data_i (tmatch_value_d),
-        .wr_en_i   (tmatch_value_we[i]),
-        .rd_data_o (tmatch_value_q[i]),
-        .rd_error_o()
+          .clk_i     (clk_i),
+          .rst_ni    (rst_ni),
+          .wr_data_i (tmatch_value_d),
+          .wr_en_i   (tmatch_value_we[i]),
+          .rd_data_o (tmatch_value_q[i]),
+          .rd_error_o()
       );
     end
 
@@ -2026,23 +2045,25 @@ module ibex_cs_registers #(
     end
 
     // TDATA0 - only support simple address matching
-    assign tmatch_control_rdata = {4'h2,                    // type    : address/data match
-                                   1'b1,                    // dmode   : access from D mode only
-                                   6'h00,                   // maskmax : exact match only
-                                   1'b0,                    // hit     : not supported
-                                   1'b0,                    // select  : address match only
-                                   1'b0,                    // timing  : match before execution
-                                   2'b00,                   // sizelo  : match any access
-                                   4'h1,                    // action  : enter debug mode
-                                   1'b0,                    // chain   : not supported
-                                   4'h0,                    // match   : simple match
-                                   1'b1,                    // m       : match in m-mode
-                                   1'b0,                    // 0       : zero
-                                   1'b0,                    // s       : not supported
-                                   1'b1,                    // u       : match in u-mode
-                                   selected_tmatch_control, // execute : match instruction address
-                                   1'b0,                    // store   : not supported
-                                   1'b0};                   // load    : not supported
+    assign tmatch_control_rdata = {
+      4'h2,  // type    : address/data match
+      1'b1,  // dmode   : access from D mode only
+      6'h00,  // maskmax : exact match only
+      1'b0,  // hit     : not supported
+      1'b0,  // select  : address match only
+      1'b0,  // timing  : match before execution
+      2'b00,  // sizelo  : match any access
+      4'h1,  // action  : enter debug mode
+      1'b0,  // chain   : not supported
+      4'h0,  // match   : simple match
+      1'b1,  // m       : match in m-mode
+      1'b0,  // 0       : zero
+      1'b0,  // s       : not supported
+      1'b1,  // u       : match in u-mode
+      selected_tmatch_control,  // execute : match instruction address
+      1'b0,  // store   : not supported
+      1'b0
+    };  // load    : not supported
 
     // TDATA1 - address match value only
     assign tmatch_value_rdata = selected_tmatch_value;
@@ -2066,8 +2087,9 @@ module ibex_cs_registers #(
   //////////////////////////
 
   // Cast register write data
-  assign cpuctrlsts_part_wdata_raw =
-    cpu_ctrl_sts_part_t'(csr_wdata_int[$bits(cpu_ctrl_sts_part_t)-1:0]);
+  assign cpuctrlsts_part_wdata_raw = cpu_ctrl_sts_part_t'(csr_wdata_int[$bits(
+      cpu_ctrl_sts_part_t
+  )-1:0]);
 
   // Generate fixed time execution bit
   if (DataIndTiming) begin : gen_dit
@@ -2099,14 +2121,14 @@ module ibex_cs_registers #(
     // tieoff for the unused bit
     logic       unused_dummy_en;
     logic [2:0] unused_dummy_mask;
-    assign unused_dummy_en   = cpuctrlsts_part_wdata_raw.dummy_instr_en;
-    assign unused_dummy_mask = cpuctrlsts_part_wdata_raw.dummy_instr_mask;
+    assign unused_dummy_en                        = cpuctrlsts_part_wdata_raw.dummy_instr_en;
+    assign unused_dummy_mask                      = cpuctrlsts_part_wdata_raw.dummy_instr_mask;
 
     // field will always read as zero if not configured
     assign cpuctrlsts_part_wdata.dummy_instr_en   = 1'b0;
     assign cpuctrlsts_part_wdata.dummy_instr_mask = 3'b000;
-    assign dummy_instr_seed_en_o             = 1'b0;
-    assign dummy_instr_seed_o                = '0;
+    assign dummy_instr_seed_en_o                  = 1'b0;
+    assign dummy_instr_seed_o                     = '0;
   end
 
   assign dummy_instr_en_o   = cpuctrlsts_part_q.dummy_instr_en;
@@ -2117,16 +2139,16 @@ module ibex_cs_registers #(
     assign cpuctrlsts_part_wdata.icache_enable = cpuctrlsts_part_wdata_raw.icache_enable;
 
     ibex_csr #(
-      .Width     (1),
-      .ShadowCopy(ShadowCSR),
-      .ResetValue(1'b0)
+        .Width     (1),
+        .ShadowCopy(ShadowCSR),
+        .ResetValue(1'b0)
     ) u_cpuctrlsts_ic_scr_key_valid_q_csr (
-      .clk_i     (clk_i),
-      .rst_ni    (rst_ni),
-      .wr_data_i (ic_scr_key_valid_i),
-      .wr_en_i   (1'b1),
-      .rd_data_o (cpuctrlsts_ic_scr_key_valid_q),
-      .rd_error_o(cpuctrlsts_ic_scr_key_err)
+        .clk_i     (clk_i),
+        .rst_ni    (rst_ni),
+        .wr_data_i (ic_scr_key_valid_i),
+        .wr_en_i   (1'b1),
+        .rd_data_o (cpuctrlsts_ic_scr_key_valid_q),
+        .rd_error_o(cpuctrlsts_ic_scr_key_err)
     );
   end else begin : gen_no_icache
     // tieoff for the unused icen bit
@@ -2138,7 +2160,7 @@ module ibex_cs_registers #(
 
 
     logic unused_ic_scr_key_valid;
-    assign unused_ic_scr_key_valid = ic_scr_key_valid_i;
+    assign unused_ic_scr_key_valid       = ic_scr_key_valid_i;
 
     // ic_scr_key_valid will always read as zero if ICache not configured
     assign cpuctrlsts_ic_scr_key_valid_q = 1'b0;
@@ -2146,22 +2168,22 @@ module ibex_cs_registers #(
   end
 
   assign cpuctrlsts_part_wdata.double_fault_seen = cpuctrlsts_part_wdata_raw.double_fault_seen;
-  assign cpuctrlsts_part_wdata.sync_exc_seen     = cpuctrlsts_part_wdata_raw.sync_exc_seen;
+  assign cpuctrlsts_part_wdata.sync_exc_seen = cpuctrlsts_part_wdata_raw.sync_exc_seen;
 
   assign icache_enable_o =
     cpuctrlsts_part_q.icache_enable & ~(debug_mode_i | debug_mode_entering_i);
 
   ibex_csr #(
-    .Width     ($bits(cpu_ctrl_sts_part_t)),
-    .ShadowCopy(ShadowCSR),
-    .ResetValue('0)
+      .Width     ($bits(cpu_ctrl_sts_part_t)),
+      .ShadowCopy(ShadowCSR),
+      .ResetValue('0)
   ) u_cpuctrlsts_part_csr (
-    .clk_i     (clk_i),
-    .rst_ni    (rst_ni),
-    .wr_data_i ({cpuctrlsts_part_d}),
-    .wr_en_i   (cpuctrlsts_part_we),
-    .rd_data_o (cpuctrlsts_part_q),
-    .rd_error_o(cpuctrlsts_part_err)
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i ({cpuctrlsts_part_d}),
+      .wr_en_i   (cpuctrlsts_part_we),
+      .rd_data_o (cpuctrlsts_part_q),
+      .rd_error_o(cpuctrlsts_part_err)
   );
 
   assign csr_shadow_err_o =
