@@ -21,11 +21,11 @@ package ibex_pkg;
   } crash_dump_t;
 
   typedef struct packed {
-    logic        dummy_instr_id;
-    logic [4:0]  raddr_a;
-    logic [4:0]  waddr_a;
-    logic        we_a;
-    logic [4:0]  raddr_b;
+    logic       dummy_instr_id;
+    logic [4:0] raddr_a;
+    logic [4:0] waddr_a;
+    logic       we_a;
+    logic [4:0] raddr_b;
   } core2rf_t;
 
   /////////////////////
@@ -216,7 +216,7 @@ package ibex_pkg;
   } csr_op_e;
 
   // Privileged mode
-  typedef enum logic[1:0] {
+  typedef enum logic [1:0] {
     PRIV_LVL_M = 2'b11,
     PRIV_LVL_H = 2'b10,
     PRIV_LVL_S = 2'b01,
@@ -224,10 +224,10 @@ package ibex_pkg;
   } priv_lvl_e;
 
   // Constants for the dcsr.xdebugver fields
-  typedef enum logic[3:0] {
-    XDEBUGVER_NO     = 4'd0, // no external debug support
-    XDEBUGVER_STD    = 4'd4, // external debug according to RISC-V debug spec
-    XDEBUGVER_NONSTD = 4'd15 // debug not conforming to RISC-V debug spec
+  typedef enum logic [3:0] {
+    XDEBUGVER_NO     = 4'd0,  // no external debug support
+    XDEBUGVER_STD    = 4'd4,  // external debug according to RISC-V debug spec
+    XDEBUGVER_NONSTD = 4'd15  // debug not conforming to RISC-V debug spec
   } x_debug_ver_e;
 
   //////////////
@@ -235,10 +235,10 @@ package ibex_pkg;
   //////////////
 
   // Type of instruction present in writeback stage
-  typedef enum logic[1:0] {
-    WB_INSTR_LOAD,  // Instruction is awaiting load data
-    WB_INSTR_STORE, // Instruction is awaiting store response
-    WB_INSTR_OTHER  // Instruction doesn't fit into above categories
+  typedef enum logic [1:0] {
+    WB_INSTR_LOAD,   // Instruction is awaiting load data
+    WB_INSTR_STORE,  // Instruction is awaiting store response
+    WB_INSTR_OTHER   // Instruction doesn't fit into above categories
   } wb_instr_type_e;
 
   //////////////
@@ -246,7 +246,7 @@ package ibex_pkg;
   //////////////
 
   // Operand a selection
-  typedef enum logic[1:0] {
+  typedef enum logic [1:0] {
     OP_A_REG_A,
     OP_A_FWD,
     OP_A_CURRPC,
@@ -319,7 +319,7 @@ package ibex_pkg;
     EXC_PC_EXC,
     EXC_PC_IRQ,
     EXC_PC_DBD,
-    EXC_PC_DBG_EXC, // Exception while in debug mode
+    EXC_PC_DBG_EXC,   // Exception while in debug mode
     EXC_PC_IRQ_CLIC,
     EXC_PC_VTABLE
   } exc_pc_sel_e;
@@ -345,7 +345,7 @@ package ibex_pkg;
 
 
 
-  typedef struct packed{
+  typedef struct packed {
     logic [11:0] imm;
     logic [4:0]  base;
     logic [2:0]  func3;
@@ -354,17 +354,17 @@ package ibex_pkg;
   } load_sp_t;
 
 
-  typedef struct packed{
-    logic [6:0]  imm;
-    logic [4:0]  src;
-    logic [4:0]  base;
-    logic [2:0]  func3;
-    logic [4:0]  imm2;
-    opcode_e     opcode;
+  typedef struct packed {
+    logic [6:0] imm;
+    logic [4:0] src;
+    logic [4:0] base;
+    logic [2:0] func3;
+    logic [4:0] imm2;
+    opcode_e    opcode;
   } store_sp_t;
 
 
-  parameter logic [31:0] Alloc_stack_instr   = 32'hFDC10113;
+  parameter logic [31:0] Alloc_stack_instr = 32'hFDC10113;
   parameter logic [31:0] Dealloc_stack_instr = 32'h02410113;
 
 
@@ -374,11 +374,11 @@ package ibex_pkg;
 
   // Interrupt requests
   typedef struct packed {
-    logic        irq_software;
-    logic        irq_timer;
-    logic        irq_external;
+    logic irq_software;
+    logic irq_timer;
+    logic irq_external;
     //logic [14:0] irq_fast; // 15 fast interrupts, // replaced in this fork
-                          // one interrupt is reserved for NMI (not visible through mip/mie)
+    // one interrupt is reserved for NMI (not visible through mip/mie)
   } irqs_t;
 
   // interrupt status (clic)
@@ -393,31 +393,113 @@ package ibex_pkg;
 
 
   typedef struct packed {
-    logic       irq;
-    logic       minhv;
-    logic [1:0] mpp;
-    logic       mpie;
-    logic [7:0] mpil;
+    logic        irq;
+    logic        minhv;
+    logic [1:0]  mpp;
+    logic        mpie;
+    logic [7:0]  mpil;
     logic [11:0] cause;
   } exc_cause_t;
 
-  localparam exc_cause_t ExcCauseIrqSoftwareM =    '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd03};
-  localparam exc_cause_t ExcCauseIrqTimerM =       '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd07};
-  localparam exc_cause_t ExcCauseIrqExternalM =    '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd11};
-  localparam exc_cause_t ExcCauseIrqNm =           '{irq: 1'b1, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd31};
-  localparam exc_cause_t ExcCauseInsnAddrMisa =    '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd00};
-  localparam exc_cause_t ExcCauseInstrAccessFault ='{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd01};
-  localparam exc_cause_t ExcCauseIllegalInsn =     '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd02};
-  localparam exc_cause_t ExcCauseBreakpoint =      '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd03};
-  localparam exc_cause_t ExcCauseLoadAccessFault  ='{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd05};
-  localparam exc_cause_t ExcCauseStoreAccessFault ='{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd07};
-  localparam exc_cause_t ExcCauseEcallUMode =      '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd08};
-  localparam exc_cause_t ExcCauseEcallMMode =      '{irq: 1'b0, minhv: 1'b0, mpp: 2'b0, mpie: 1'b0, mpil: 8'b0, cause: 12'd11};
+  localparam exc_cause_t ExcCauseIrqSoftwareM = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd03
+  };
+  localparam exc_cause_t ExcCauseIrqTimerM = '{
+      irq: 1'b1,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd07
+  };
+  localparam exc_cause_t ExcCauseIrqExternalM = '{
+      irq: 1'b1,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd11
+  };
+  localparam exc_cause_t ExcCauseIrqNm = '{
+      irq: 1'b1,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd31
+  };
+  localparam exc_cause_t ExcCauseInsnAddrMisa = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd00
+  };
+  localparam exc_cause_t ExcCauseInstrAccessFault = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd01
+  };
+  localparam exc_cause_t ExcCauseIllegalInsn = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd02
+  };
+  localparam exc_cause_t ExcCauseBreakpoint = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd03
+  };
+  localparam exc_cause_t ExcCauseLoadAccessFault = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd05
+  };
+  localparam exc_cause_t ExcCauseStoreAccessFault = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd07
+  };
+  localparam exc_cause_t ExcCauseEcallUMode = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd08
+  };
+  localparam exc_cause_t ExcCauseEcallMMode = '{
+      irq: 1'b0,
+      minhv: 1'b0,
+      mpp: 2'b0,
+      mpie: 1'b0,
+      mpil: 8'b0,
+      cause: 12'd11
+  };
 
   // Internal NMI cause
-  typedef enum logic [4:0] {
-    NMI_INT_CAUSE_ECC = 5'b0
-  } nmi_int_cause_e;
+  typedef enum logic [4:0] {NMI_INT_CAUSE_ECC = 5'b0} nmi_int_cause_e;
 
   // Debug cause
   typedef enum logic [2:0] {
@@ -429,42 +511,42 @@ package ibex_pkg;
   } dbg_cause_e;
 
   // ICache constants
-  parameter int unsigned ADDR_W           = 32;
-  parameter int unsigned BUS_SIZE         = 32;
-  parameter int unsigned BUS_BYTES        = BUS_SIZE/8;
-  parameter int unsigned BUS_W            = $clog2(BUS_BYTES);
-  parameter int unsigned IC_SIZE_BYTES    = 4096;
-  parameter int unsigned IC_NUM_WAYS      = 2;
-  parameter int unsigned IC_LINE_SIZE     = 64;
-  parameter int unsigned IC_LINE_BYTES    = IC_LINE_SIZE/8;
-  parameter int unsigned IC_LINE_W        = $clog2(IC_LINE_BYTES);
-  parameter int unsigned IC_NUM_LINES     = IC_SIZE_BYTES / IC_NUM_WAYS / IC_LINE_BYTES;
-  parameter int unsigned IC_LINE_BEATS    = IC_LINE_BYTES / BUS_BYTES;
-  parameter int unsigned IC_LINE_BEATS_W  = $clog2(IC_LINE_BEATS);
-  parameter int unsigned IC_INDEX_W       = $clog2(IC_NUM_LINES);
-  parameter int unsigned IC_INDEX_HI      = IC_INDEX_W + IC_LINE_W - 1;
-  parameter int unsigned IC_TAG_SIZE      = ADDR_W - IC_INDEX_W - IC_LINE_W + 1; // 1 valid bit
-  parameter int unsigned IC_OUTPUT_BEATS  = (BUS_BYTES / 2); // number of halfwords
+  parameter int unsigned ADDR_W = 32;
+  parameter int unsigned BUS_SIZE = 32;
+  parameter int unsigned BUS_BYTES = BUS_SIZE / 8;
+  parameter int unsigned BUS_W = $clog2(BUS_BYTES);
+  parameter int unsigned IC_SIZE_BYTES = 4096;
+  parameter int unsigned IC_NUM_WAYS = 2;
+  parameter int unsigned IC_LINE_SIZE = 64;
+  parameter int unsigned IC_LINE_BYTES = IC_LINE_SIZE / 8;
+  parameter int unsigned IC_LINE_W = $clog2(IC_LINE_BYTES);
+  parameter int unsigned IC_NUM_LINES = IC_SIZE_BYTES / IC_NUM_WAYS / IC_LINE_BYTES;
+  parameter int unsigned IC_LINE_BEATS = IC_LINE_BYTES / BUS_BYTES;
+  parameter int unsigned IC_LINE_BEATS_W = $clog2(IC_LINE_BEATS);
+  parameter int unsigned IC_INDEX_W = $clog2(IC_NUM_LINES);
+  parameter int unsigned IC_INDEX_HI = IC_INDEX_W + IC_LINE_W - 1;
+  parameter int unsigned IC_TAG_SIZE = ADDR_W - IC_INDEX_W - IC_LINE_W + 1;  // 1 valid bit
+  parameter int unsigned IC_OUTPUT_BEATS = (BUS_BYTES / 2);  // number of halfwords
   // ICache Scrambling Parameters
-  parameter int unsigned SCRAMBLE_KEY_W   = 128;
+  parameter int unsigned SCRAMBLE_KEY_W = 128;
   parameter int unsigned SCRAMBLE_NONCE_W = 64;
 
   // PMP constants
-  parameter int unsigned PMP_MAX_REGIONS      = 16;
-  parameter int unsigned PMP_CFG_W            = 8;
+  parameter int unsigned PMP_MAX_REGIONS = 16;
+  parameter int unsigned PMP_CFG_W = 8;
 
   // PMP acces type
-  parameter int unsigned PMP_I  = 0;
+  parameter int unsigned PMP_I = 0;
   parameter int unsigned PMP_I2 = 1;
-  parameter int unsigned PMP_D  = 2;
+  parameter int unsigned PMP_D = 2;
 
   parameter TRAP_MACHINE = 2'b00;
-  parameter TRAP_USER    = 2'b01;
+  parameter TRAP_USER = 2'b01;
 
   typedef enum logic [1:0] {
-    PMP_ACC_EXEC    = 2'b00,
-    PMP_ACC_WRITE   = 2'b01,
-    PMP_ACC_READ    = 2'b10
+    PMP_ACC_EXEC  = 2'b00,
+    PMP_ACC_WRITE = 2'b01,
+    PMP_ACC_READ  = 2'b10
   } pmp_req_e;
 
   // PMP cfg structures
@@ -485,13 +567,13 @@ package ibex_pkg;
 
   // Machine Security Configuration (ePMP)
   typedef struct packed {
-    logic rlb;  // Rule Locking Bypass
-    logic mmwp; // Machine Mode Whitelist Policy
-    logic mml;  // Machine Mode Lockdown
+    logic rlb;   // Rule Locking Bypass
+    logic mmwp;  // Machine Mode Whitelist Policy
+    logic mml;   // Machine Mode Lockdown
   } pmp_mseccfg_t;
 
   // CSRs
-  typedef enum logic[11:0] {
+  typedef enum logic [11:0] {
     // Machine information
     CSR_MVENDORID  = 12'hF11,
     CSR_MARCHID    = 12'hF12,
@@ -500,42 +582,42 @@ package ibex_pkg;
     CSR_MCONFIGPTR = 12'hF15,
 
     // Machine trap setup
-    CSR_MSTATUS   = 12'h300,
-    CSR_MISA      = 12'h301,
-    CSR_MEDELEG   = 12'h302,
-    CSR_MIE       = 12'h304,
-    CSR_MTVEC     = 12'h305,
-    CSR_MCOUNTEREN= 12'h306,
-    CSR_MTVT      = 12'h307,
-    CSR_MSTATUSH  = 12'h310,
+    CSR_MSTATUS    = 12'h300,
+    CSR_MISA       = 12'h301,
+    CSR_MEDELEG    = 12'h302,
+    CSR_MIE        = 12'h304,
+    CSR_MTVEC      = 12'h305,
+    CSR_MCOUNTEREN = 12'h306,
+    CSR_MTVT       = 12'h307,
+    CSR_MSTATUSH   = 12'h310,
 
-    CSR_MENVCFG   = 12'h30A,
-    CSR_MENVCFGH  = 12'h31A,
+    CSR_MENVCFG  = 12'h30A,
+    CSR_MENVCFGH = 12'h31A,
 
     // Machine trap handling
-    CSR_MSCRATCH  = 12'h340,
-    CSR_MEPC      = 12'h341,
-    CSR_MCAUSE    = 12'h342,
-    CSR_MTVAL     = 12'h343,
-    CSR_MIP       = 12'h344,
+    CSR_MSCRATCH = 12'h340,
+    CSR_MEPC     = 12'h341,
+    CSR_MCAUSE   = 12'h342,
+    CSR_MTVAL    = 12'h343,
+    CSR_MIP      = 12'h344,
 
     // CLIC registers
-    CSR_MNXTI      = 12'h345,
-    CSR_MINTSATUS  = 12'h346,
-    CSR_MINTTHRESH = 12'h347,
-    CSR_MSCRATCHSW = 12'h348,
-    CSR_MSCRATCHSWL= 12'h349,
-    CSR_MCLICBASE  = 12'h350,
+    CSR_MNXTI       = 12'h345,
+    CSR_MINTSATUS   = 12'h346,
+    CSR_MINTTHRESH  = 12'h347,
+    CSR_MSCRATCHSW  = 12'h348,
+    CSR_MSCRATCHSWL = 12'h349,
+    CSR_MCLICBASE   = 12'h350,
 
     // Dynamic priority custom registers
-    CSR_MTIME_LO   = 12'h360,
-    CSR_MTIME_HI   = 12'h361,
-    CSR_EDF_TS_LO  = 12'h362,
-    CSR_EDF_TS_HI  = 12'h363,
+    CSR_MTIME_LO  = 12'h360,
+    CSR_MTIME_HI  = 12'h361,
+    //CSR_EDF_TS_LO  = 12'h362,
+    //CSR_EDF_TS_HI  = 12'h363,
     //CSR_EDF_PTS_LO = 12'h364,
     //CSR_EDF_PTS_HI = 12'h365,
-    CSR_EDF_COUNT  = 12'h366,
-    CSR_EDF_CTRL   = 12'h367,
+    CSR_EDF_COUNT = 12'h366,
+    CSR_EDF_BLOCK = 12'h367,
 
     // Physical memory protection
     CSR_PMPCFG0   = 12'h3A0,
@@ -559,11 +641,11 @@ package ibex_pkg;
     CSR_PMPADDR14 = 12'h3BE,
     CSR_PMPADDR15 = 12'h3BF,
 
-    CSR_SCONTEXT  = 12'h5A8,
+    CSR_SCONTEXT = 12'h5A8,
 
     // ePMP control
-    CSR_MSECCFG   = 12'h747,
-    CSR_MSECCFGH  = 12'h757,
+    CSR_MSECCFG  = 12'h747,
+    CSR_MSECCFGH = 12'h757,
 
     // Debug trigger
     CSR_TSELECT   = 12'h7A0,
@@ -574,12 +656,12 @@ package ibex_pkg;
     CSR_MSCONTEXT = 12'h7AA,
 
     // Debug/trace
-    CSR_DCSR      = 12'h7b0,
-    CSR_DPC       = 12'h7b1,
+    CSR_DCSR = 12'h7b0,
+    CSR_DPC  = 12'h7b1,
 
     // Debug
-    CSR_DSCRATCH0 = 12'h7b2, // optional
-    CSR_DSCRATCH1 = 12'h7b3, // optional
+    CSR_DSCRATCH0 = 12'h7b2,  // optional
+    CSR_DSCRATCH1 = 12'h7b3,  // optional
 
     // Machine Counter/Timers
     CSR_MCOUNTINHIBIT  = 12'h320,
@@ -679,36 +761,36 @@ package ibex_pkg;
   } csr_num_e;
 
   // CSR pmp-related offsets
-  parameter logic [11:0] CSR_OFF_PMP_CFG  = 12'h3A0; // pmp_cfg  @ 12'h3a0 - 12'h3a3
-  parameter logic [11:0] CSR_OFF_PMP_ADDR = 12'h3B0; // pmp_addr @ 12'h3b0 - 12'h3bf
+  parameter logic [11:0] CSR_OFF_PMP_CFG = 12'h3A0;  // pmp_cfg  @ 12'h3a0 - 12'h3a3
+  parameter logic [11:0] CSR_OFF_PMP_ADDR = 12'h3B0;  // pmp_addr @ 12'h3b0 - 12'h3bf
 
   // CSR status bits
-  parameter int unsigned CSR_MSTATUS_MIE_BIT      = 3;
-  parameter int unsigned CSR_MSTATUS_MPIE_BIT     = 7;
-  parameter int unsigned CSR_MSTATUS_MPP_BIT_LOW  = 11;
+  parameter int unsigned CSR_MSTATUS_MIE_BIT = 3;
+  parameter int unsigned CSR_MSTATUS_MPIE_BIT = 7;
+  parameter int unsigned CSR_MSTATUS_MPP_BIT_LOW = 11;
   parameter int unsigned CSR_MSTATUS_MPP_BIT_HIGH = 12;
-  parameter int unsigned CSR_MSTATUS_MPRV_BIT     = 17;
-  parameter int unsigned CSR_MSTATUS_TW_BIT       = 21;
+  parameter int unsigned CSR_MSTATUS_MPRV_BIT = 17;
+  parameter int unsigned CSR_MSTATUS_TW_BIT = 21;
 
   // CSR machine ISA
-  parameter logic [1:0] CSR_MISA_MXL = 2'd1; // M-XLEN: XLEN in M-Mode for RV32
+  parameter logic [1:0] CSR_MISA_MXL = 2'd1;  // M-XLEN: XLEN in M-Mode for RV32
 
   // CSR interrupt pending/enable bits
-  parameter int unsigned CSR_MSIX_BIT      = 3;
-  parameter int unsigned CSR_MTIX_BIT      = 7;
-  parameter int unsigned CSR_MEIX_BIT      = 11;
-  parameter int unsigned CSR_MFIX_BIT_LOW  = 16;
+  parameter int unsigned CSR_MSIX_BIT = 3;
+  parameter int unsigned CSR_MTIX_BIT = 7;
+  parameter int unsigned CSR_MEIX_BIT = 11;
+  parameter int unsigned CSR_MFIX_BIT_LOW = 16;
   parameter int unsigned CSR_MFIX_BIT_HIGH = 30;
 
   // CSR Machine Security Configuration bits
-  parameter int unsigned CSR_MSECCFG_MML_BIT  = 0;
+  parameter int unsigned CSR_MSECCFG_MML_BIT = 0;
   parameter int unsigned CSR_MSECCFG_MMWP_BIT = 1;
-  parameter int unsigned CSR_MSECCFG_RLB_BIT  = 2;
+  parameter int unsigned CSR_MSECCFG_RLB_BIT = 2;
 
   // Vendor ID
   // No JEDEC ID has been allocated to lowRISC so the value is 0 to indicate the field is not
   // implemented
-  localparam logic [31:0] CSR_MVENDORID_VALUE  = 32'b0;
+  localparam logic [31:0] CSR_MVENDORID_VALUE = 32'b0;
 
   // Architecture ID
   // Top bit is unset to indicate an open source project. The lower bits are an ID allocated by the
@@ -733,13 +815,10 @@ package ibex_pkg;
   typedef logic [LfsrWidth-1:0] lfsr_seed_t;
   typedef logic [LfsrWidth-1:0][$clog2(LfsrWidth)-1:0] lfsr_perm_t;
   parameter lfsr_seed_t RndCnstLfsrSeedDefault = 32'hac533bf4;
-  parameter lfsr_perm_t RndCnstLfsrPermDefault = {
-    160'h1e35ecba467fd1b12e958152c04fa43878a8daed
-  };
+  parameter lfsr_perm_t RndCnstLfsrPermDefault = {160'h1e35ecba467fd1b12e958152c04fa43878a8daed};
   parameter logic [SCRAMBLE_KEY_W-1:0]   RndCnstIbexKeyDefault =
       128'h14e8cecae3040d5e12286bb3cc113298;
-  parameter logic [SCRAMBLE_NONCE_W-1:0] RndCnstIbexNonceDefault =
-      64'hf79780bc735f3843;
+  parameter logic [SCRAMBLE_NONCE_W-1:0] RndCnstIbexNonceDefault = 64'hf79780bc735f3843;
 
   // Mult-bit signal used for security hardening. For non-secure implementation all bits other than
   // the bottom bit are ignored.
@@ -749,6 +828,6 @@ package ibex_pkg;
   // for Off. This allows the use of IbexMuBiOn/IbexMuBiOff to work for both secure and non-secure
   // Ibex. If this assumption is broken the RTL that uses ibex_mubi_t types such as the fetch_enable
   // and core_busy signals within `ibex_core` may need adjusting.
-  parameter ibex_mubi_t IbexMuBiOn  = 4'b0101;
+  parameter ibex_mubi_t IbexMuBiOn = 4'b0101;
   parameter ibex_mubi_t IbexMuBiOff = 4'b1010;
 endpackage

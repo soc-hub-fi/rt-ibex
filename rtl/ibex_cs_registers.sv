@@ -275,12 +275,12 @@ NUM_INTERRUPTS
   logic [31:0] mtvt_q, mtvt_d;
   logic mtvt_err;
   logic mtvt_en;
-  logic [63:0] edf_ts_q, edf_ts_d;
-  logic edf_ts_err;
-  logic edf_ts_en;
   logic [31:0] edf_count_q, edf_count_d;
   logic edf_count_err;
   logic edf_count_en;
+  logic [31:0] edf_block_q, edf_block_d;
+  logic edf_block_err;
+  logic edf_block_en;
   logic [31:0] mnxti_q, mnxti_d;
   logic mnxti_en;
   mintstatus_t mintstatus_q, mintstatus_d;
@@ -377,12 +377,6 @@ NUM_INTERRUPTS
   logic [ 2:0] unused_csr_addr;
 
   logic mtime_clk, mtime_clk_q;
-  logic [63:0] task_blocked_counter;
-
-  // Calculate how long current task has been blocked by preemption
-  // For unblocked tasks value should always be zero
-  assign task_blocked_counter = (edf_ts_q == 64'h0) ? 64'h0 : mtime_i - (edf_ts_q + 64'(edf_count_q));
-
   assign mtime_clk = mtime_i[0];
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -605,11 +599,8 @@ NUM_INTERRUPTS
       CSR_MTIME_LO: csr_rdata_int = mtime_i[31:0];
       CSR_MTIME_HI: csr_rdata_int = mtime_i[63:32];
 
-      CSR_EDF_TS_LO: csr_rdata_int = edf_ts_q[31:0];
-      CSR_EDF_TS_HI: csr_rdata_int = edf_ts_q[63:32];
-
       CSR_EDF_COUNT: csr_rdata_int = edf_count_q;
-      CSR_EDF_CTRL:  csr_rdata_int = 32'h0;
+      CSR_EDF_BLOCK: csr_rdata_int = edf_block_q;
 
       CSR_MSECCFG: begin
         if (PMPEnable) begin
@@ -804,8 +795,8 @@ NUM_INTERRUPTS
     mscratchswl_d = csr_wdata_int;
     mclicbase_d = {csr_wdata_int[31:12], 12'b0};
 
-    edf_ts_d = edf_ts_q;
-    edf_ts_en = 1'b0;
+    edf_block_d = edf_block_q;
+    edf_block_en = 1'b0;
     edf_count_d = edf_count_q;
     edf_count_en = 1'b0;
 
@@ -910,18 +901,9 @@ NUM_INTERRUPTS
           edf_count_en = 1'b1;
         end
 
-        CSR_EDF_TS_LO: begin
-          edf_ts_en = 1'b1;
-          edf_ts_d  = {edf_ts_q[63:32], csr_wdata_int};
-        end
-        CSR_EDF_TS_HI: begin
-          edf_ts_en = 1'b1;
-          edf_ts_d  = {csr_wdata_int, edf_ts_q[31:0]};
-        end
-
-        CSR_EDF_CTRL: begin
-          edf_ts_en = 1'b1;
-          edf_ts_d  = mtime_i;
+        CSR_EDF_BLOCK: begin
+          edf_block_d  = csr_wdata_int;
+          edf_block_en = 1'b1;
         end
 
         // CLIC registers
@@ -1006,18 +988,12 @@ NUM_INTERRUPTS
     // Dynamic mintstatus.mil increment
     if (mintstatus_q.mil != 8'h00 && mintstatus_q.mil != 8'hFF) begin
       if (mtime_clk != mtime_clk_q) begin
-        edf_count_en = 1'b1;
         mintstatus_en = 1'b1;
-        mintstatus_d.mil = mintstatus_q.mil + 8'h1;  // + 8'(task_blocked_counter);
+        mintstatus_d.mil = mintstatus_q.mil + 8'h1;
 
+        edf_count_en = 1'b1;
         edf_count_d = edf_count_q + 32'h1;
       end
-    end
-
-    // Fix traling increment after task completion
-    if (mintstatus_q.mil == 8'h00 && edf_count_q != 0) begin
-      edf_count_en = 1'b1;
-      edf_count_d  = 32'h0;
     end
 
     // exception controller gets priority over other writes
@@ -1146,11 +1122,15 @@ NUM_INTERRUPTS
         end else begin
           // otherwise restore interrupt prio levels
           mcause_d.mpil = mintstatus_q.mil;
-          mintstatus_d.mil = mcause_q.mpil + 8'(task_blocked_counter);
-
+          if (mcause_q.mpil == 8'h0) begin
+            mintstatus_d.mil = mcause_q.mpil;
+          end else begin
+            mintstatus_d.mil = ((9'(mcause_q.mpil) + 9'(edf_block_q)) >= 9'd255 )
+                ? 8'd255 : mcause_q.mpil + 8'(edf_block_q);
+          end
           // set mstatus.MPIE/MPP
           mstatus_d.mpie = 1'b1;
-          mstatus_d.mpp = PRIV_LVL_M;  // user-mode is not support, Return to machine-mode
+          mstatus_d.mpp  = PRIV_LVL_M;  // user-mode is not support, Return to machine-mode
         end
       end  // csr_restore_mret_i
 
@@ -1337,20 +1317,6 @@ NUM_INTERRUPTS
       .rd_error_o(mtvt_err)
   );
 
-  // EDF_TS
-  ibex_csr #(
-      .Width     (64),
-      .ShadowCopy(1'b0),
-      .ResetValue('0)
-  ) u_edf_ts_csr (
-      .clk_i     (clk_i),
-      .rst_ni    (rst_ni),
-      .wr_data_i (edf_ts_d),
-      .wr_en_i   (edf_ts_en),
-      .rd_data_o (edf_ts_q),
-      .rd_error_o(edf_ts_err)
-  );
-
 
   // EDF_COUNT
   ibex_csr #(
@@ -1364,6 +1330,20 @@ NUM_INTERRUPTS
       .wr_en_i   (edf_count_en),
       .rd_data_o (edf_count_q),
       .rd_error_o(edf_count_err)
+  );
+
+  // EDF_BLOCK
+  ibex_csr #(
+      .Width     (32),
+      .ShadowCopy(1'b0),
+      .ResetValue('0)
+  ) u_edf_block_csr (
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .wr_data_i (edf_block_d),
+      .wr_en_i   (edf_block_en),
+      .rd_data_o (edf_block_q),
+      .rd_error_o(edf_block_err)
   );
 
 
