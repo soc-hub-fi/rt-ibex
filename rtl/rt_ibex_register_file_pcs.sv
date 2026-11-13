@@ -11,7 +11,7 @@
  * targeting FPGA synthesis or Verilator simulation.
  */
 module rt_ibex_register_file_pcs
-  import ibex_pkg::*;
+  import rt_ibex_pkg::*;
 #(
     parameter bit          RV32E         = 0,
     parameter int unsigned DataWidth     = 32,

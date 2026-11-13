@@ -6,7 +6,7 @@
 
 
 
-module rt_ibex_hw_stacking import ibex_pkg::*; #(
+module rt_ibex_hw_stacking import rt_ibex_pkg::*; #(
 ) (
     input logic            rst_ni,
     input logic            clk_i,
@@ -346,7 +346,7 @@ always_ff @(posedge clk_i or negedge rst_ni) begin : update_dest_src
     end else begin
 
         /// The outputs of hw_stacking have to be registered to avoid
-        /// comb loops with ibex_controller
+        /// comb loops with rt_ibex_controller
         done_o                <= done;
         instr_valid_o         <= instr_valid;
         instr_rdata_o         <= instr_rdata;

@@ -21,41 +21,41 @@ sources:
   - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_buf.sv
   - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv
   - vendor/lowrisc_ip/ip/prim/rtl/prim_cipher_pkg.sv
-  - rtl/ibex_pkg.sv
+  - rtl/rt_ibex_pkg.sv
   - rtl/rt_ibex_hw_stacking.sv
-  - rtl/ibex_controller.sv
-  - rtl/ibex_compressed_decoder.sv
-  - rtl/ibex_decoder.sv
-  - rtl/ibex_multdiv_fast.sv
-  - rtl/ibex_multdiv_slow.sv
-  - rtl/ibex_prefetch_buffer.sv
-  - rtl/ibex_register_file_ff.sv
-  - rtl/ibex_register_file_latch.sv
+  - rtl/rt_ibex_controller.sv
+  - rtl/rt_ibex_compressed_decoder.sv
+  - rtl/rt_ibex_decoder.sv
+  - rtl/rt_ibex_multdiv_fast.sv
+  - rtl/rt_ibex_multdiv_slow.sv
+  - rtl/rt_ibex_prefetch_buffer.sv
+  - rtl/rt_ibex_register_file_ff.sv
+  - rtl/rt_ibex_register_file_latch.sv
   - rtl/rt_ibex_register_window_latch.sv
   - rtl/rt_ibex_pcs_lifo.sv
   - rtl/rt_ibex_pcs_lifo_latch.sv
   - rtl/rt_ibex_pcs_memory.sv
   - rtl/rt_ibex_register_file_pcs.sv
-  - rtl/ibex_fetch_fifo.sv
-  - rtl/ibex_branch_predict.sv
-  - rtl/ibex_alu.sv
-  - rtl/ibex_counter.sv
-  - rtl/ibex_csr.sv
-  - rtl/ibex_cs_registers.sv
-  - rtl/ibex_if_stage.sv
-  - rtl/ibex_id_stage.sv
-  - rtl/ibex_ex_block.sv
-  - rtl/ibex_load_store_unit.sv
-  - rtl/ibex_wb_stage.sv
-  - rtl/ibex_register_file_fpga.sv
+  - rtl/rt_ibex_fetch_fifo.sv
+  - rtl/rt_ibex_branch_predict.sv
+  - rtl/rt_ibex_alu.sv
+  - rtl/rt_ibex_counter.sv
+  - rtl/rt_ibex_csr.sv
+  - rtl/rt_ibex_cs_registers.sv
+  - rtl/rt_ibex_if_stage.sv
+  - rtl/rt_ibex_id_stage.sv
+  - rtl/rt_ibex_ex_block.sv
+  - rtl/rt_ibex_load_store_unit.sv
+  - rtl/rt_ibex_wb_stage.sv
+  - rtl/rt_ibex_register_file_fpga.sv
   - rtl/rt_ibex_register_window_ff.sv
-  - rtl/ibex_core.sv
-  - rtl/ibex_top.sv
+  - rtl/rt_ibex_core.sv
+  - rtl/rt_ibex_top.sv
   - target: not(any(asic, synthesis))
     files:
-      - rtl/ibex_tracer_pkg.sv
-      - rtl/ibex_tracer.sv
-      - rtl/ibex_top_tracing.sv
+      - rtl/rt_ibex_tracer_pkg.sv
+      - rtl/rt_ibex_tracer.sv
+      - rtl/rt_ibex_top_tracing.sv
   - target: not(any(fpga, xilinx))
     files:
       - syn/rtl/prim_clock_gating.v
