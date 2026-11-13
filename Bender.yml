@@ -56,6 +56,6 @@ sources:
       - rtl/rt_ibex_tracer_pkg.sv
       - rtl/rt_ibex_tracer.sv
       - rtl/rt_ibex_top_tracing.sv
-  - target: not(any(fpga, xilinx))
+  - target: not(any(asic, fpga, xilinx))
     files:
       - syn/rtl/prim_clock_gating.v
