@@ -182,6 +182,7 @@ module rt_ibex_controller #(
   logic load_err_prio;
 
   logic stall;
+  logic hws_mret_ready_q;
   logic halt_if;
   logic retain_id;
   logic flush_id;
@@ -1115,7 +1116,11 @@ module rt_ibex_controller #(
         stacking_run  = 1'b1;
         trap_addr_mux_o = TRAP_MACHINE;
 
-        if(stacking_done_i && !stall && !id_wb_pending) begin  // All hardware stacking instructions have retired
+        // All hardware stacking instructions have retired (registered, see hws_mret_ready_q). The
+        // jump must not depend on stall/id_wb_pending combinationally: they follow the data bus
+        // response (data_rvalid_i/data_err_i), and pc_set_o/pc_mux_o drive instr_req_o/instr_addr_o,
+        // which closes a combinational loop through a shared interconnect.
+        if(hws_mret_ready_q) begin
           stacking_ack_o   = 1'b1;        // signal to the hw_stacking unit to get ready for a new interrupt
 
           // Execute the delayed MRET
@@ -1153,6 +1158,18 @@ module rt_ibex_controller #(
   ///////////////////
   // Stall control //
   ///////////////////
+
+  // HWS_MRET: the MRET jump is taken in the cycle after all hardware stacking instructions have
+  // retired. stacking_done_i is held by the stacking unit until stacking_ack_o, and no further
+  // instruction enters ID while in HWS_MRET, so the condition stays valid for that extra cycle.
+  always_ff @(posedge clk_i or negedge rst_ni) begin : update_hws_mret_ready
+    if (!rst_ni) begin
+      hws_mret_ready_q <= 1'b0;
+    end else begin
+      hws_mret_ready_q <= (ctrl_fsm_cs == HWS_MRET) & ~hws_mret_ready_q &
+                          stacking_done_i & ~stall & ~id_wb_pending;
+    end
+  end
 
   // Abort is registered to avoid comb loop nets between id and controller
   always_ff @(posedge clk_i or negedge rst_ni) begin : update_abort
